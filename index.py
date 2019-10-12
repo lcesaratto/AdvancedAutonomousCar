@@ -16,6 +16,7 @@ def line_keeping():
         # Capture frame-by-frame
         ret, frame = cap.read()
         if ret:
+            cv2.imshow("Result Image", frame)
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             lower_black = np.array([0, 0, 0])
             upper_black = np.array([255, 255, 50])
@@ -30,6 +31,7 @@ def line_keeping():
                 x1, y1, x2, y2 = line[0]
                 cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)
             # Show result
+            frame=cv2.flip(frame,-1)
             cv2.imshow("Result Image", frame)
 
             # Display the resulting frame
