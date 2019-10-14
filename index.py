@@ -1,5 +1,7 @@
 import cv2
 import numpy as np
+from pyzbar import pyzbar
+
 
 
 def line_keeping():
@@ -15,28 +17,34 @@ def line_keeping():
     while cap.isOpened():
         # Capture frame-by-frame
         ret, frame = cap.read()
+        
+        width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
+        height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
+        fps =  cap.get(cv2.CAP_PROP_FPS) #
+        frame = frame[0:int(height*0.6),0:int(width)]
+        frame = cv2.flip(frame, flipCode=-1)
+        
         if ret:
-            cv2.imshow("Result Image", frame)
+            
             hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             lower_black = np.array([0, 0, 0])
-            upper_black = np.array([255, 255, 50])
+            upper_black = np.array([255, 255, 90]) #255, 255, 90
             mask = cv2.inRange(hsv, lower_black, upper_black)
             res = cv2.bitwise_and(frame, frame, mask=mask)
-            dif_gray = cv2.GaussianBlur(mask, (5, 5), 0)
-            canny = cv2.Canny(dif_gray, 25, 175)
+            dif_gray = cv2.GaussianBlur(mask, (3, 3), 0) #(mask, (5, 5), 0)
+            canny = cv2.Canny(dif_gray, 1, 500,) # 25, 175)
     
-            lines = cv2.HoughLinesP(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
+            lines = cv2.HoughLinesP(canny, 1, np.pi / 180, 20, minLineLength=5, maxLineGap=25) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
             # Draw lines on the image
             for line in lines:
                 x1, y1, x2, y2 = line[0]
                 cv2.line(frame, (x1, y1), (x2, y2), (255, 0, 0), 3)
             # Show result
-            frame=cv2.flip(frame,-1)
-            cv2.imshow("Result Image", frame)
+            #cv2.imshow("Result Image", frame)
 
             # Display the resulting frame
-            # cv2.imshow('Frame', canny)
-
+            #cv2.imshow('Frame', canny)
+            cv2.imshow('Frame', frame)
             # Press Q on keyboard to  exit
             if cv2.waitKey(25) & 0xFF == ord('q'):  # 25fps
                 break
@@ -51,5 +59,25 @@ def line_keeping():
     cv2.destroyAllWindows()
 
 
+def qr_reader():
+
+    img_path = 'image.jpg'
+
+    img = cv2.imread(img_path)
+
+    barcodes = pyzbar.decode(img)
+
+    for barcode in barcodes:
+        #(x, y, w, h) = barcode.rect
+        #cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        barcodeData = barcode.data.decode("utf-8")
+        barcodeType = barcode.type
+        #text = "{} ({})".format(barcodeData, barcodeType)
+        #cv2.putText(img, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        print("[INFO] found {} barcode {}".format(barcodeType, barcodeData))
+    #cv2.imwrite("new_img.jpg", img)
+
+
 if __name__ == "__main__":
-    line_keeping()
+    #line_keeping()
+    qr_reader()
