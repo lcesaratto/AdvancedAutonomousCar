@@ -65,8 +65,12 @@ def line_keeping():
                 #Aplico Transformada de Hough
                 lines_right = cv2.HoughLinesP(canny_right, 1, np.pi / 180, 20, minLineLength=5, maxLineGap=10) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
                 # Draw lines on the image
+                cant_lineas=len(lines_right)
+                print(cant_lineas)
                 for line in lines_right: #for line in lines:
                     x1, y1, x2, y2 = line[0]
+                
+
                     cv2.line(frame_right, (x1, y1), (x2, y2), (255, 0, 0), 5)
 
 
@@ -80,7 +84,7 @@ def line_keeping():
             cv2.imshow('Frame', frame_left)
             cv2.imshow('Frame2', frame_right)
             # Press Q on keyboard to  exit
-            if cv2.waitKey(25) & 0xFF == ord('q'):  # 25fps
+            if cv2.waitKey(120) & 0xFF == ord('q'):  # 25fps
                 break
         # Break the loop
         else:
@@ -102,16 +106,16 @@ def qr_reader():
     barcodes = pyzbar.decode(img)
 
     for barcode in barcodes:
-        #(x, y, w, h) = barcode.rect
-        #cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        (x, y, w, h) = barcode.rect
+        cv2.rectangle(img, (x, y), (x + w, y + h), (0, 0, 255), 2)
         barcodeData = barcode.data.decode("utf-8")
         barcodeType = barcode.type
-        #text = "{} ({})".format(barcodeData, barcodeType)
-        #cv2.putText(img, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+        text = "{} ({})".format(barcodeData, barcodeType)
+        cv2.putText(img, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         print("[INFO] found {} barcode {}".format(barcodeType, barcodeData))
-    #cv2.imwrite("new_img.jpg", img)
+    cv2.imwrite("new_img.jpg", img)
 
 
 if __name__ == "__main__":
-    #line_keeping()
-    qr_reader()
+    line_keeping()
+    #qr_reader()
