@@ -76,24 +76,22 @@ def line_keeping():
                 
                 x1prom=0
                 x2prom=0
+                y1prom=0
+                y2prom=0
                 cant=0
                 for line in lines_right: #for line in lines:
                     x1, y1, x2, y2 = line[0]
-                    if x1>50 & x2>50:
-                        x1prom+=x1
-                        x2prom+=x2
-                        cant=+1
-                    #cv2.line(frame_right, (x1, y1), (x2, y2), (255, 0, 0), 5)
-                x1tot = x1prom/cant
-                x2tot = x2prom/cant
-                right_points = [(x1tot,y1), (x2tot,y2)]
-                [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
-                # Now find two extreme points on the line to draw line
-                lefty = int((-x*vy/vx) + y)
-                righty = int(((frame_right.shape[1]-x)*vy/vx)+y)
 
-                #Finally draw the line
-                cv2.line(frame_right,(frame_right.shape[1]-1,righty),(0,lefty),255,2)
+                    #cv2.line(frame_right, (x1, y1), (x2, y2), (255, 0, 0), 5)
+               
+                    right_points = [(x1,y1), (x2,y2)]
+                    [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
+                    # Now find two extreme points on the line to draw line
+                    lefty = int((-x*vy/vx) + y)
+                    righty = int(((frame_right.shape[1]-x)*vy/vx)+y)
+
+                    #Finally draw the line
+                    cv2.line(frame_right,(frame_right.shape[1]-1,righty),(0,lefty),255,2)
 
             except Exception as e:
                 print(e)
@@ -106,7 +104,7 @@ def line_keeping():
             cv2.imshow('Frame', frame_left)
             cv2.imshow('Frame2', frame_right)
             # Press Q on keyboard to  exit
-            if cv2.waitKey(120) & 0xFF == ord('q'):  # 25fps
+            if cv2.waitKey(25) & 0xFF == ord('q'):  # 25fps
                 break
         # Break the loop
         else:
