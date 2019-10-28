@@ -29,7 +29,7 @@ def line_keeping():
             width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
             height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
             fps =  cap.get(cv2.CAP_PROP_FPS)
-            frame_right = frame[0:int(height*0.5),0:int(width*0.5)]
+            frame_right = frame[0:int(height*0.5),0:int(width*0.5)]#frame_right = frame[0:int(height*0.5),0:int(width*0.5)]
             frame_left = frame[0:int(height*0.5),int(width*0.5):int(width)]
             frame_left = cv2.flip(frame_left, flipCode=-1)
             frame_right = cv2.flip(frame_right, flipCode=-1)            
@@ -66,16 +66,38 @@ def line_keeping():
                 lines_right = cv2.HoughLinesP(canny_right, 1, np.pi / 180, 20, minLineLength=5, maxLineGap=10) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
                 # Draw lines on the image
                 cant_lineas=len(lines_right)
-                print(cant_lineas)
+                #print(cant_lineas)
+                '''
+                if cant_lineas>15:
+                    print('Se detecto una curva')
+                else:
+                    print('Se detecto una linea')
+                '''                
+                
+                x1prom=0
+                x2prom=0
+                cant=0
                 for line in lines_right: #for line in lines:
                     x1, y1, x2, y2 = line[0]
-                
+                    if x1>50 & x2>50:
+                        x1prom+=x1
+                        x2prom+=x2
+                        cant=+1
+                    #cv2.line(frame_right, (x1, y1), (x2, y2), (255, 0, 0), 5)
+                x1tot = x1prom/cant
+                x2tot = x2prom/cant
+                right_points = [(x1tot,y1), (x2tot,y2)]
+                [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
+                # Now find two extreme points on the line to draw line
+                lefty = int((-x*vy/vx) + y)
+                righty = int(((frame_right.shape[1]-x)*vy/vx)+y)
 
-                    cv2.line(frame_right, (x1, y1), (x2, y2), (255, 0, 0), 5)
+                #Finally draw the line
+                cv2.line(frame_right,(frame_right.shape[1]-1,righty),(0,lefty),255,2)
 
-
-            except:
-                print("No se detectaron lineas derecha")            
+            except Exception as e:
+                print(e)
+                #print("No se detectaron lineas derecha")            
             # Show result
             #cv2.imshow("Result Image", frame)
 
