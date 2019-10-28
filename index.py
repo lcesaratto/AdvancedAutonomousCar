@@ -79,18 +79,28 @@ def line_keeping():
                 y1prom=0
                 y2prom=0
                 cant=0
+
+                righty_sum=0
+                lefty_sum=0
+                counter=0
                 for line in lines_right: #for line in lines:
                     x1, y1, x2, y2 = line[0]
 
-                    #cv2.line(frame_right, (x1, y1), (x2, y2), (255, 0, 0), 5)
-               
                     right_points = [(x1,y1), (x2,y2)]
                     [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
+                    
                     # Now find two extreme points on the line to draw line
                     lefty = int((-x*vy/vx) + y)
                     righty = int(((frame_right.shape[1]-x)*vy/vx)+y)
 
                     #Finally draw the line
+                    if abs(vy/vx) > 5:
+                        righty_sum+=righty
+                        lefty_sum+=lefty
+                        counter+=1
+                if (counter!=0) & (righty_sum!=0) & (lefty_sum!=0):
+                    righty=righty_sum//counter
+                    lefty=lefty_sum//counter
                     cv2.line(frame_right,(frame_right.shape[1]-1,righty),(0,lefty),255,2)
 
             except Exception as e:
