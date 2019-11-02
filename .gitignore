@@ -1,1 +1,4 @@
 Otros\ proyectos\ de\ referencia/
+venv/
+.vscode/
+.gitignore

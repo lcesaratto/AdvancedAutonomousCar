@@ -1,8 +1,7 @@
 import cv2
 import numpy as np
 from pyzbar import pyzbar
-
-
+from MLfunctions import MLfunction
 
 def line_keeping():
     # Create a VideoCapture object and read from input file
@@ -94,7 +93,7 @@ def line_keeping():
                     righty = int(((frame_right.shape[1]-x)*vy/vx)+y)
 
                     #Finally draw the line
-                    if abs(vy/vx) > 5:
+                    if (abs(vy/vx) > 5) & (abs(vy/vx) < 30) :
                         righty_sum+=righty
                         lefty_sum+=lefty
                         counter+=1
@@ -147,5 +146,6 @@ def qr_reader():
 
 
 if __name__ == "__main__":
-    line_keeping()
+    #line_keeping()
     #qr_reader()
+    MLfunction()
