@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from pyzbar import pyzbar
-from MLfunctions import *
+from MLfunctions import ML_create, ML_test
 
 def line_keeping():
     # Create a VideoCapture object and read from input file
@@ -66,12 +66,11 @@ def line_keeping():
                 # Draw lines on the image
                 cant_lineas=len(lines_right)
                 #print(cant_lineas)
-                '''
+                
                 if cant_lineas>15:
                     print('Se detecto una curva')
                 else:
-                    print('Se detecto una linea')
-                '''                
+                    print('Se detecto una linea')              
                 
                 x1prom=0
                 x2prom=0
@@ -93,7 +92,7 @@ def line_keeping():
                     righty = int(((frame_right.shape[1]-x)*vy/vx)+y)
 
                     #Finally draw the line
-                    if (abs(vy/vx) > 5) & (abs(vy/vx) < 30) :
+                    if (abs(vy/vx) > 1) & (abs(vy/vx) < 30) :
                         righty_sum+=righty
                         lefty_sum+=lefty
                         counter+=1
@@ -146,6 +145,6 @@ def qr_reader():
 
 
 if __name__ == "__main__":
-    #line_keeping()
-    #qr_reader()
-    ML_test()
+    line_keeping()
+    # qr_reader()
+    # ML_test()
