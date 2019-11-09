@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from pyzbar import pyzbar
-from MLfunctions import *
+from MLfunctions import ML_create, ML_test
 
 def line_keeping():
     # Create a VideoCapture object and read from input file
@@ -28,7 +28,8 @@ def line_keeping():
             width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
             height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
             fps =  cap.get(cv2.CAP_PROP_FPS)
-            frame_right = frame[0:int(height*0.5),0:int(width*0.5)]#frame_right = frame[0:int(height*0.5),0:int(width*0.5)]
+            #frame_right = frame[0:int(height*0.5),0:int(width*0.5)]#frame_right = frame[0:int(height*0.5),0:int(width*0.5)]
+            frame_right = frame[0:int(height*0.5),0:int(width*0.4)] #0.5
             frame_left = frame[0:int(height*0.5),int(width*0.5):int(width)]
             frame_left = cv2.flip(frame_left, flipCode=-1)
             frame_right = cv2.flip(frame_right, flipCode=-1)            
@@ -66,12 +67,12 @@ def line_keeping():
                 # Draw lines on the image
                 cant_lineas=len(lines_right)
                 #print(cant_lineas)
-                '''
-                if cant_lineas>15:
+                
+                if cant_lineas>7:
                     print('Se detecto una curva')
                 else:
                     print('Se detecto una linea')
-                '''                
+                                
                 
                 x1prom=0
                 x2prom=0
@@ -82,26 +83,30 @@ def line_keeping():
                 righty_sum=0
                 lefty_sum=0
                 counter=0
+                x1m=0;
                 for line in lines_right: #for line in lines:
                     x1, y1, x2, y2 = line[0]
-
-                    right_points = [(x1,y1), (x2,y2)]
-                    [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
-                    
-                    # Now find two extreme points on the line to draw line
-                    lefty = int((-x*vy/vx) + y)
-                    righty = int(((frame_right.shape[1]-x)*vy/vx)+y)
+                    if(x1>x1m):
+                        x1m=x1
+                        right_points = [(x1,y1), (x2,y2)]
+                #right_points = [(x1,y1), (x2,y2)]
+                x1m=0
+                [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
+                
+                # Now find two extreme points on the line to draw line
+                lefty = int((-x*vy/vx) + y)
+                righty = int(((frame_right.shape[1]-x)*vy/vx)+y)
 
                     #Finally draw the line
-                    if (abs(vy/vx) > 5) & (abs(vy/vx) < 30) :
-                        righty_sum+=righty
-                        lefty_sum+=lefty
-                        counter+=1
+                if (abs(vy/vx) > 1) & (abs(vy/vx) < 30) :
+                    righty_sum+=righty
+                    lefty_sum+=lefty
+                    counter+=1
                 if (counter!=0) & (righty_sum!=0) & (lefty_sum!=0):
                     righty=righty_sum//counter
                     lefty=lefty_sum//counter
                     cv2.line(frame_right,(frame_right.shape[1]-1,righty),(0,lefty),255,2)
-
+                    print(frame_right.shape[1]-1)
             except Exception as e:
                 print(e)
                 #print("No se detectaron lineas derecha")            
@@ -146,6 +151,6 @@ def qr_reader():
 
 
 if __name__ == "__main__":
-    #line_keeping()
+    line_keeping()
     #qr_reader()
-    ML_test()
+    #ML_test()
