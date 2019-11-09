@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from pyzbar import pyzbar
-from MLfunctions import MLfunction
+from MLfunctions import *
 
 def line_keeping():
     # Create a VideoCapture object and read from input file
@@ -148,4 +148,4 @@ def qr_reader():
 if __name__ == "__main__":
     #line_keeping()
     #qr_reader()
-    MLfunction()
+    ML_test()

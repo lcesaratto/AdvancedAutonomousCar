@@ -5,8 +5,12 @@ from keras.constraints import maxnorm
 from keras.layers.convolutional import Conv2D, MaxPooling2D
 from keras.utils import np_utils
 from keras.datasets import cifar10
+from keras.models import load_model
 
-def MLfunction():
+import os
+os.environ['TP_CPP_MIN_LOG_LEVEL'] = '1'
+
+def ML_create():
     # fix random seed for reproducibility
     seed = 21
     numpy.random.seed(seed)
@@ -69,11 +73,22 @@ def MLfunction():
 
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
-    print(model.summary())
+    model.summary()
+    model.save('my_model.h5')
 
     model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=epochs, batch_size=64)
 
     # Final evaluation of the model
-
     scores = model.evaluate(X_test, y_test, verbose=0)
     print("Accuracy: %.2f%%" % (scores[1]*100))
+    model.save_weights('weights.h5')
+
+def ML_test():
+    path = ''
+    model = load_model(os.path.join(path, 'my_model.h5'))
+    model.load_weights(os.path.join(path,'weights.h5'))
+
+    X_test = X_test.astype('float32')
+    X_test = X_test / 255.0
+
+    predictions = model.predict(X_test)
