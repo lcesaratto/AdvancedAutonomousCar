@@ -206,16 +206,17 @@ def line_keeping_grid():
                         dif_gray_right = cv2.GaussianBlur(mask_right, (3, 3), 0) #(mask, (5, 5), 0)
                         canny_right = cv2.Canny(dif_gray_right, 1, 500) # 25, 175)
                         #Aplico Transformada de Hough
-                        lines_right = cv2.HoughLinesP(canny_right, 1, np.pi / 180, 20, minLineLength=5, maxLineGap=10) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
+                        lines_right = cv2.HoughLinesP(canny_right, 1, np.pi / 180, 20, minLineLength=0, maxLineGap=1000) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
                         # Draw lines on the image
                         if lines_right is not None:
                             cant_lineas=len(lines_right)
-                            print(cant_lineas)
+                            #print(cant_lineas)
                             
                             if cant_lineas>3:
-                                print('Se detecto una curva')
+                                #print('Se detecto una curva')
+                                asd = 0
                             else:
-                                print('Se detecto una linea')
+                                #print('Se detecto una linea')
                             
                                 x1prom=0
                                 x2prom=0
@@ -229,10 +230,16 @@ def line_keeping_grid():
                                 x1m=0
                                 for line in lines_right: #for line in lines:
                                     x1, y1, x2, y2 = line[0]
+                                    '''
                                     if(x1>x1m):
                                         x1m=x1
                                         right_points = [(x1,y1), (x2,y2)]
-                                #right_points = [(x1,y1), (x2,y2)]
+                                        '''
+                                    #x1m=x1
+                                    #right_points = [(x1,y1), (x2,y2)]  
+                                    cv2.line(frameCut,(x1,y1),(x2,y2),(0,0,255),2)
+                                    #cv2.line(frameCut,(frameCut.shape[1]-1,x1),(0,y1),255,2)
+                                '''
                                 [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
                                 
                                 # Now find two extreme points on the line to draw line
@@ -240,16 +247,21 @@ def line_keeping_grid():
                                 righty = int(((frameCut.shape[1]-x)*vy/vx)+y)
 
                                     #Finally draw the line
+                                
                                 if (abs(vy/vx) > 1) & (abs(vy/vx) < 30) :
                                     righty_sum+=righty
                                     lefty_sum+=lefty
                                     counter+=1
-
+                                '''
+                                '''
                                 if (counter!=0) & (righty_sum!=0) & (lefty_sum!=0):
                                     righty=righty_sum//counter
                                     lefty=lefty_sum//counter
                                     cv2.line(frameCut,(frameCut.shape[1]-1,righty),(0,lefty),255,2)
+                                
+                                cv2.line(frameCut,(frameCut.shape[1]-1,righty),(0,lefty),255,2)
                                     # print(frameCut.shape[1]-1)
+                                    '''
 
                     except Exception as e:
                         print(e)
@@ -265,8 +277,10 @@ def line_keeping_grid():
                 elif column == 32:
                     column=0
                     row+=1
+                    '''
             if (frame == frameResulting).all(): #Esto es para verificar que el frame original sea igual al reconstruido
                 print ("Excelente!")
+                '''
             # frameCut=frame[(1):(2),(1):(2)]
             # print("hola0", frame[1][1])
             # print("hola00", frame[239][639])
