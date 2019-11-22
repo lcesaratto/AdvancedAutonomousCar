@@ -1,7 +1,9 @@
 import cv2
 import numpy as np
 from pyzbar import pyzbar
+from matplotlib.pyplot import *
 from MLfunctions import ML_create, ML_test
+<<<<<<< HEAD
 import matplotlib.pyplot as plt
 # try:
 #     from PIL import Image
@@ -9,6 +11,10 @@ import matplotlib.pyplot as plt
 #     import Image
 
 def line_keeping():
+=======
+def line_keeping_nico():
+    i=0
+>>>>>>> nico changes
     # Create a VideoCapture object and read from input file
     # If the input is the camera, pass 0 instead of the video file name
     cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
@@ -74,9 +80,49 @@ def line_keeping():
                 #print(cant_lineas)
                 
                 if cant_lineas>7:
+                    linea=0
                     print('Se detecto una curva')
                 else:
+                    linea=1
                     print('Se detecto una linea')
+<<<<<<< HEAD
+=======
+                                
+                
+                x1prom=0
+                x2prom=0
+                y1prom=0
+                y2prom=0
+                cant=0
+
+                righty_sum=0
+                lefty_sum=0
+                counter=0
+                x1m=0
+                x1a = []
+                y1a = []
+                for line in lines_right: #for line in lines:
+                    
+                    x1, y1, x2, y2 = line[0]
+                    x1a.append(x1)
+                    y1a.append(y1)
+                    i+=1
+                    if(x1>x1m) & linea:
+                        x1m=x1
+                        right_points = [(x1,y1), (x2,y2)]
+                if linea==0:
+                    z = np.polyfit(x1a,y1a,4)
+                    f = np.poly1d(z)
+                 
+                    t = np.arange(0,frame_right.shape[1] ,1)
+                    #plot(t,f(t),'r-')
+                    pts = np.vstack((t,f(t))).astype(np.int32).T#pts = np.vstack((x1a,y1a)).astype(np.int32).T
+                    cv2.polylines(frame_right,[pts],isClosed=False,color=(0,0,255), thickness=3)
+                    
+                #right_points = [(x1,y1), (x2,y2)]
+                
+                [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
+>>>>>>> nico changes
                 
                     x1prom=0
                     x2prom=0
@@ -299,7 +345,13 @@ def line_keeping_grid():
     cv2.destroyAllWindows()
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     # line_keeping()
     # qr_reader()
     # ML_test()
     line_keeping_grid()
+=======
+    line_keeping_nico()
+    #qr_reader()
+    #ML_test()
+>>>>>>> nico changes
