@@ -205,16 +205,18 @@ def line_keeping_grid():
                         #Aplico filtro pasa bajos y deteccion de lineas por Canny
                         dif_gray_right = cv2.GaussianBlur(mask_right, (3, 3), 0) #(mask, (5, 5), 0)
                         canny_right = cv2.Canny(dif_gray_right, 1, 500) # 25, 175)
-                        #Aplico Transformada de Hough
-                        lines_right = cv2.HoughLinesP(canny_right, 1, np.pi / 180, 20, minLineLength=0, maxLineGap=1000) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
+                        # frameCut = canny_right
+                        ## Aplico Transformada de Hough
+                        lines_right = cv2.HoughLinesP(canny_right, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
                         # Draw lines on the image
                         if lines_right is not None:
                             cant_lineas=len(lines_right)
                             #print(cant_lineas)
                             
-                            if cant_lineas>3:
+                            if cant_lineas>7:
                                 #print('Se detecto una curva')
-                                asd = 0
+                                frameCut[:,:,2] = frameCut[:,:,2] + 50
+                                #frameCut[:,:,0] = 0
                             else:
                                 #print('Se detecto una linea')
                             
@@ -262,6 +264,9 @@ def line_keeping_grid():
                                 cv2.line(frameCut,(frameCut.shape[1]-1,righty),(0,lefty),255,2)
                                     # print(frameCut.shape[1]-1)
                                     '''
+                                frameCut[:,:,0] = frameCut[:,:,0]+50
+                        else:
+                            frameCut[:,:,1] = frameCut[:,:,1] + 50        
 
                     except Exception as e:
                         print(e)
@@ -271,13 +276,13 @@ def line_keeping_grid():
                     for x in range(40): #filas
                         for j in range(40): #columnas
                             # print(frameCut[x][j])
-                            frameResulting[199-row*40+x][0+40*column+j] = frameCut[x][j]
+                            frameResulting[200-row*40+x][0+40*column+j] = frameCut[x][j]
                     column+=1
                     # list.append(frameCut)
                 elif column == 16:
                     column=0
                     row+=1
-                    '''
+            '''     
             if (frame == frameResulting).all(): #Esto es para verificar que el frame original sea igual al reconstruido
                 print ("Excelente!")
                 '''
@@ -292,7 +297,7 @@ def line_keeping_grid():
             # dx and dy can be different
             dx, dy = 40,40
             # Custom (rgb) grid color
-            grid_color = [0,0,0]
+            grid_color = [255,0,0]# [0,0,0]
             # Modify the image to include the grid
             frameResulting[:,::dy,:] = grid_color
             frameResulting[::dx,:,:] = grid_color
