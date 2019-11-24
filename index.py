@@ -188,32 +188,64 @@ def line_keeping_grid():
             column=0
             row=0
             frameResulting=frame
+
+            #Aplico filtro de color con los parametros ya definidos
+            # hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS) #BRG2HLS
+            hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #BRG2HLS
+            # cv2.imshow('framefilterHSV', hsv_right)
+            mask_right = cv2.inRange(frame, lower_black, upper_black)
+            res_right = cv2.bitwise_and(frame, frame, mask=mask_right)
+            # cv2.imshow('framefilter', res_right)
+
+            #Aplico filtro pasa bajos y deteccion de lineas por Canny
+            '''
+            kernel = np.ones((3,3), np.uint8)
+            frame_e = cv2.erode(frame, kernel, iterations=1)
+            gray_right = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY) 
+            (thresh, bw_right) = cv2.threshold(gray_right, 40, 255, cv2.THRESH_BINARY)
+            #dif_gray_right = cv2.GaussianBlur(bw_right, (1, 1), 0) #(mask, (5, 5), 0)
+            cv2.imshow('framefilterdif', frame_e)
+            canny_right = cv2.Canny(bw_right, 25, 175) # 25, 175)
+            cv2.imshow('framefilter', canny_right)
+            '''
+            #Umbral Dinamico
+            kernel = np.ones((3,3), np.uint8)
+            frame_e = cv2.erode(frame, kernel, iterations=1)
+            gray = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY)
+            gray = cv2.GaussianBlur(gray, (3, 3), 0)
+            gray = cv2.medianBlur(gray, 5)
+            dst2 = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 9, 5)
+            cv2.imshow('framefilterdif', dst2)
+            dif_gray_right = cv2.GaussianBlur(dst2, (11, 11), 0) #(mask, (5, 5), 0)
+            #cv2.imshow('framefilterdif', frame_e)
+            canny_right = cv2.Canny(dif_gray_right, 25, 175) # 25, 175)
+            kernel = np.ones((7,7), np.uint8)
+            canny_right = cv2.morphologyEx(canny_right, cv2.MORPH_CLOSE, kernel)
+            kernel = np.ones((3,3), np.uint8)
+            canny_right = cv2.erode(canny_right, kernel, iterations=1)
+            cv2.imshow('framefilter', canny_right)
+            
             # list = []
             '''Recorre de abajo para arriba, de izquierda a derecha'''
             while row < 6:
                 if column < 16:
+
+                    cannyCut=canny_right[(200-row*40):(240-row*40),(40*column):(40+40*column)]
                     frameCut=frame[(200-row*40):(240-row*40),(40*column):(40+40*column)]
+
 
                     '''Aca procesamos cada frameCut'''
                     try:
 
-                        #Aplico filtro de color con los parametros ya definidos
-                        hsv_right = cv2.cvtColor(frameCut, cv2.COLOR_BGR2HLS) #BRG2HLS
-                        mask_right = cv2.inRange(hsv_right, lower_black, upper_black)
-                        res_right = cv2.bitwise_and(frameCut, frameCut, mask=mask_right)
-
-                        #Aplico filtro pasa bajos y deteccion de lineas por Canny
-                        dif_gray_right = cv2.GaussianBlur(mask_right, (3, 3), 0) #(mask, (5, 5), 0)
-                        canny_right = cv2.Canny(dif_gray_right, 1, 500) # 25, 175)
                         # frameCut = canny_right
                         ## Aplico Transformada de Hough
-                        lines_right = cv2.HoughLinesP(canny_right, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
+                        lines_right = cv2.HoughLinesP(cannyCut, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
                         # Draw lines on the image
                         if lines_right is not None:
                             cant_lineas=len(lines_right)
-                            #print(cant_lineas)
+                            print(cant_lineas)
                             
-                            if cant_lineas>7:
+                            if cant_lineas>100: #11
                                 #print('Se detecto una curva')
                                 frameCut[:,:,2] = frameCut[:,:,2] + 50
                                 #frameCut[:,:,0] = 0

@@ -1,14 +1,3 @@
-import numpy
-from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten, BatchNormalization, Activation
-from keras.constraints import maxnorm
-from keras.layers.convolutional import Conv2D, MaxPooling2D
-from keras.utils import np_utils
-from keras.datasets import cifar10
-from keras.models import load_model
-
-import os
-os.environ['TP_CPP_MIN_LOG_LEVEL'] = '1'
 
 def ML_create():
     # fix random seed for reproducibility
@@ -84,6 +73,20 @@ def ML_create():
     model.save_weights('weights.h5')
 
 def ML_test():
+    import numpy
+    from keras.models import Sequential
+    from keras.layers import Dense, Dropout, Flatten, BatchNormalization, Activation
+    from keras.constraints import maxnorm
+    from keras.layers.convolutional import Conv2D, MaxPooling2D
+    from keras.utils import np_utils
+    from keras.datasets import cifar10
+    from keras.models import load_model
+
+    import os
+    os.environ['TP_CPP_MIN_LOG_LEVEL'] = '1'
+
+
+
     path = ''
     model = load_model(os.path.join(path, 'my_model.h5'))
     model.load_weights(os.path.join(path,'weights.h5'))
