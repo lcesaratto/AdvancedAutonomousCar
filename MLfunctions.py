@@ -1,5 +1,12 @@
-
-def ML_create():
+def MLfunction_cifar10():
+    import numpy
+    from keras.models import Sequential
+    from keras.layers import Dense, Dropout, Flatten, BatchNormalization, Activation
+    from keras.constraints import maxnorm
+    from keras.layers.convolutional import Conv2D, MaxPooling2D
+    from keras.utils import np_utils
+    from keras.datasets import cifar10
+    import os
     # fix random seed for reproducibility
     seed = 21
     numpy.random.seed(seed)
@@ -57,12 +64,13 @@ def ML_create():
     model.add(Dense(num_classes))
     model.add(Activation('softmax'))
 
-    epochs = 25
+    epochs = 25 #25
     optimizer = 'Adam'
 
     model.compile(loss='categorical_crossentropy', optimizer=optimizer, metrics=['accuracy'])
 
-    model.summary()
+    print(model.summary())
+
     model.save('my_model.h5')
 
     model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=epochs, batch_size=64)
@@ -71,8 +79,9 @@ def ML_create():
     scores = model.evaluate(X_test, y_test, verbose=0)
     print("Accuracy: %.2f%%" % (scores[1]*100))
     model.save_weights('weights.h5')
+    #predictions = model.predict(X_test)
 
-def ML_test():
+def predict_cifar10(Image):
     import numpy
     from keras.models import Sequential
     from keras.layers import Dense, Dropout, Flatten, BatchNormalization, Activation
@@ -80,18 +89,35 @@ def ML_test():
     from keras.layers.convolutional import Conv2D, MaxPooling2D
     from keras.utils import np_utils
     from keras.datasets import cifar10
-    from keras.models import load_model
-
     import os
-    os.environ['TP_CPP_MIN_LOG_LEVEL'] = '1'
+    import cv2
+    import numpy as np
 
-
-
+    from keras.models import load_model
     path = ''
     model = load_model(os.path.join(path, 'my_model.h5'))
     model.load_weights(os.path.join(path,'weights.h5'))
 
-    X_test = X_test.astype('float32')
-    X_test = X_test / 255.0
+    width = 32
+    height = 32 # keep original height
+    dim = (width, height) 
+    resized = cv2.resize(Image, dim, interpolation = cv2.INTER_AREA) 
+    Image = np.expand_dims(resized, axis=0)
 
-    predictions = model.predict(X_test)
+    Image = Image.astype('float32')
+    Image = Image / 255.0
+
+    predictions = model.predict(Image)
+    print("")
+    print("Avion:",predictions[0][0]*100,"%\n")
+    print("Automovil:",predictions[0][1]*100,"%\n")
+    print("Pajaro:",predictions[0][2]*100,"%\n")
+    print("Gato:",predictions[0][3]*100,"%\n")
+    print("Ciervo:",predictions[0][4]*100,"%\n")
+    print("Perro:",predictions[0][5]*100,"%\n")
+    print("Sapo:",predictions[0][6]*100,"%\n")
+    print("Caballo:",predictions[0][7]*100,"%\n")
+    print("Barco:",predictions[0][8]*100,"%\n")
+    print("Camion:",predictions[0][9]*100,"%\n")
+    return predictions
+

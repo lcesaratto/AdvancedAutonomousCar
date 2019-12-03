@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from pyzbar import pyzbar
-from MLfunctions import ML_create, ML_test
+from MLfunctions import *
 import matplotlib.pyplot as plt
 # try:
 #     from PIL import Image
@@ -566,5 +566,7 @@ def line_keeping_grid_v2():
 if __name__ == "__main__":
     # line_keeping()
     # qr_reader()
-    # ML_test()
+    # Image = cv2.imread('airplane.jpeg')
+    # print(Image)
+    # predict_cifar10(Image)
     line_keeping_grid_v2()
