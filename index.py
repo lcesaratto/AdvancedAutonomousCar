@@ -3,6 +3,7 @@ import numpy as np
 from pyzbar import pyzbar
 from MLfunctions import *
 import matplotlib.pyplot as plt
+import statistics
 # try:
 #     from PIL import Image
 # except ImportError:
@@ -364,6 +365,14 @@ def line_keeping_grid_v2():
     if not cap.isOpened():
         print("Error opening video stream or file")
 
+    # Array para almacenar las ultimas 10 posiciones del vehiculo
+    ultimas_posiciones = np.zeros(10)
+    indice_ultima_posicion = 0
+    activar_linea_vertical = False
+    ultimas_posiciones_derecha = np.zeros(10)
+    indice_doblar_derecha = 0
+    activar_doblar_derecha = False
+
     # Read until video is completed
     while cap.isOpened():
         # Capture frame-by-frame
@@ -546,13 +555,26 @@ def line_keeping_grid_v2():
             frameResulting[::dx,:,:] = grid_color
 
             #cv2.line(frameResulting,(0,140),(640,140),(255,255,255),2)
+            if (indice_ultima_posicion is 10):
+                indice_ultima_posicion = 0
+            ultimas_posiciones[indice_ultima_posicion] = (left_points_up[0]+right_points_up[0])/2
+            indice_ultima_posicion += 1
+
+
             cv2.line(frameResulting,(left_points_up[0],140),(right_points_up[0],140),(255,255,255),2)
+            if activar_linea_vertical:
+                cv2.line(frameResulting,(int(statistics.median(ultimas_posiciones)),0),(int(statistics.median(ultimas_posiciones)),320),(255,255,255),2)
+
             # Display the resulting frame
             cv2.imshow('frameResulting', frameResulting)
 
             # Press Q on keyboard to  exit
-            if cv2.waitKey(25) & 0xFF == ord('q'):  # 25fps
+            key = cv2.waitKey(25)
+            if key == ord('q'):  # 25fps
                 break
+            elif key == ord('k'):
+                activar_linea_vertical = True
+                print(statistics.median(ultimas_posiciones))
         # Break the loop
         else:
             break
