@@ -156,7 +156,7 @@ def line_keeping_grid_v1():
 
     lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
     upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
-
+    count=0
     # Check if camera opened successfully
     if not cap.isOpened():
         print("Error opening video stream or file")
@@ -359,6 +359,7 @@ def line_keeping_grid_v2():
 
     lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
     upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
+    count=0
 
     # Check if camera opened successfully
     if not cap.isOpened():
@@ -372,6 +373,8 @@ def line_keeping_grid_v2():
         if ret:
             right_points_up = np.array([0, 0])
             left_points_up = np.array([0, 0])
+            right_points_up_2 = np.array([0, 0])
+            left_points_up_2 = np.array([0, 0])
 
             frame = cv2.flip(frame, flipCode=-1)
             #Defino parametros HLS o HSV para detectar solo lineas negras 
@@ -438,7 +441,7 @@ def line_keeping_grid_v2():
                     cannyCut=canny_right[(200-row*40):(240-row*40),(40*column):(40+40*column)]
                     frameCut=frame[(200-row*40):(240-row*40),(40*column):(40+40*column)]
 
-                    if row == 2:
+                    if row == 2 or row == 5:
                         '''Aca procesamos cada frameCut'''
                         try:
 
@@ -468,18 +471,28 @@ def line_keeping_grid_v2():
                                     counter=0
                                     x1m=640
                                     x1M=0
+                                    x1M_2=0
+                                    right_points_up
                                     columnm=16
                                     for line in lines_right: #for line in lines:
                                         x1, y1, x2, y2 = line[0]
                                         
-                                        if(x1>x1M):
+                                        if(x1>x1M and row==2):
                                             x1M=x1
                                             right_points_up = [x1+40*column, y1+40*(5-row)]
                                             right_points_down = [x2, y2]
-                                        if(column<7):
+                                        if(column<7and row==2):
                                             # print(x1+40*column)
                                             left_points_up = [x1+40*column, y1+40*(5-row)]
                                             left_points_down = [x2, y2]
+                                        if(x1>x1M_2 and row==5):
+                                            x1M_2=x1
+                                            right_points_up_2 = [x1+40*column, y1+40*(5-row)]
+                                            right_points_down_2 = [x2, y2]
+                                        if(column<7and row==5):
+                                            # print(x1+40*column)
+                                            left_points_up_2 = [x1+40*column, y1+40*(5-row)]
+                                            left_points_down_2 = [x2, y2]    
                                         #x1m=x1
                                         #right_points = [(x1,y1), (x2,y2)]  
                                         cv2.line(frameCut,(x1,y1),(x2,y2),(0,0,255),2)
@@ -547,6 +560,18 @@ def line_keeping_grid_v2():
 
             #cv2.line(frameResulting,(0,140),(640,140),(255,255,255),2)
             cv2.line(frameResulting,(left_points_up[0],140),(right_points_up[0],140),(255,255,255),2)
+            cv2.line(frameResulting,(left_points_up_2[0],20),(right_points_up_2[0],20),(255,255,255),2)
+            dist_line_down = right_points_up[0] - left_points_up[0]
+            dist_line_up = right_points_up_2[0] - left_points_up_2[0]
+            #print(right_points_up[0])
+            if (dist_line_up > 210 or dist_line_up < 140): #En promedio 170
+                
+
+            if (dist_line_down > 210 or dist_line_down < 140): #En promedio 170
+                count+=1
+                if count>5:
+                    cv2.line(frameResulting,(370,0),(380,400),(0,255,0),2) #linea derecha
+                    #cv2.line(frameResulting,(left_points_up_2[0],20),(right_points_up_2[0],20),(255,255,255),2) #linea izquierda
             # Display the resulting frame
             cv2.imshow('frameResulting', frameResulting)
 
