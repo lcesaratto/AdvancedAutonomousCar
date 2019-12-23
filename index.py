@@ -372,6 +372,9 @@ def line_keeping_grid_v2():
     ultimas_posiciones_derecha = np.zeros(10)
     indice_doblar_derecha = 0
     activar_doblar_derecha = False
+    ultimas_posiciones_izquierda = np.zeros(10)
+    indice_doblar_izquierda = 0
+    activar_doblar_izquierda = False
 
     # Read until video is completed
     while cap.isOpened():
@@ -525,10 +528,10 @@ def line_keeping_grid_v2():
 
                         '''Aca terminamos de procesar cada frameCut'''
 
-                    for x in range(40): #filas
-                        for j in range(40): #columnas
-                            # print(frameCut[x][j])
-                            frameResulting[200-row*40+x][0+40*column+j] = frameCut[x][j]
+                    # for x in range(40): #filas
+                    #     for j in range(40): #columnas
+                    #         # print(frameCut[x][j])
+                    #         frameResulting[200-row*40+x][0+40*column+j] = frameCut[x][j]
                     column+=1
                     # list.append(frameCut)
                 elif column == 16:
@@ -555,26 +558,47 @@ def line_keeping_grid_v2():
             frameResulting[::dx,:,:] = grid_color
 
             #cv2.line(frameResulting,(0,140),(640,140),(255,255,255),2)
+
+
+            if activar_doblar_derecha:
+                if (not (statistics.median(ultimas_posiciones_derecha)*0.8 <= right_points_up[0] <= 
+                statistics.median(ultimas_posiciones_derecha)*1.2)) and (statistics.median(ultimas_posiciones_izquierda)*0.8 <= 
+                left_points_up[0] <= statistics.median(ultimas_posiciones_izquierda)*1.2):
+                    activar_linea_vertical = True
+                    activar_doblar_derecha = False
+                    print("hola")
+                    ultimas_posiciones_final = ultimas_posiciones
+                    last = int(statistics.median(ultimas_posiciones_final))
+
             if (indice_ultima_posicion is 10):
                 indice_ultima_posicion = 0
             ultimas_posiciones[indice_ultima_posicion] = (left_points_up[0]+right_points_up[0])/2
             indice_ultima_posicion += 1
 
+            if (indice_doblar_derecha is 10):
+                indice_doblar_derecha = 0
+            ultimas_posiciones_derecha[indice_doblar_derecha] = right_points_up[0]
+            indice_doblar_derecha += 1
+
+            if (indice_doblar_izquierda is 10):
+                indice_doblar_izquierda = 0
+            ultimas_posiciones_izquierda[indice_doblar_izquierda] = left_points_up[0]
+            indice_doblar_izquierda += 1
 
             cv2.line(frameResulting,(left_points_up[0],140),(right_points_up[0],140),(255,255,255),2)
+
             if activar_linea_vertical:
-                cv2.line(frameResulting,(int(statistics.median(ultimas_posiciones)),0),(int(statistics.median(ultimas_posiciones)),320),(255,255,255),2)
+                cv2.line(frameResulting,(last,0),(last,320),(255,255,255),2)
 
             # Display the resulting frame
             cv2.imshow('frameResulting', frameResulting)
 
             # Press Q on keyboard to  exit
-            key = cv2.waitKey(25)
+            key = cv2.waitKey(10)
             if key == ord('q'):  # 25fps
                 break
             elif key == ord('k'):
-                activar_linea_vertical = True
-                print(statistics.median(ultimas_posiciones))
+                activar_doblar_derecha = True
         # Break the loop
         else:
             break
