@@ -361,7 +361,11 @@ def line_keeping_grid_v2():
     lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
     upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
     count=0
-
+    bocacalle=0
+    right_points_up_arr = np.zeros(10)
+    left_points_up_arr = np.zeros(10)
+    right_points_up_med = 0
+    left_points_up_med = 0
     # Check if camera opened successfully
     if not cap.isOpened():
         print("Error opening video stream or file")
@@ -373,7 +377,7 @@ def line_keeping_grid_v2():
     ultimas_posiciones_derecha = np.zeros(10)
     indice_doblar_derecha = 0
     activar_doblar_derecha = False
-
+    indice_ultima_posicion_2 = 0
     # Read until video is completed
     while cap.isOpened():
         # Capture frame-by-frame
@@ -457,6 +461,8 @@ def line_keeping_grid_v2():
                             # frameCut = canny_right
                             ## Aplico Transformada de Hough
                             lines_right = cv2.HoughLinesP(cannyCut, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
+                            if row==2:
+                                lines_right_row2 = lines_right;
                             # Draw lines on the image
                             if lines_right is not None:
                                 cant_lineas=len(lines_right)
@@ -537,11 +543,12 @@ def line_keeping_grid_v2():
                             print(e)
 
                         '''Aca terminamos de procesar cada frameCut'''
-
+                    '''
                     for x in range(40): #filas
                         for j in range(40): #columnas
                             # print(frameCut[x][j])
                             frameResulting[200-row*40+x][0+40*column+j] = frameCut[x][j]
+                    '''
                     column+=1
                     # list.append(frameCut)
                 elif column == 16:
@@ -574,19 +581,34 @@ def line_keeping_grid_v2():
             indice_ultima_posicion += 1
 
 
-            cv2.line(frameResulting,(left_points_up[0],140),(right_points_up[0],140),(255,255,255),2)
+            if bocacalle==1:
+                cv2.line(frameResulting,(left_points_up_last,140),(right_points_up_last,140),(0,255,0),2)
+            else:
+                cv2.line(frameResulting,(left_points_up[0],140),(right_points_up[0],140),(255,255,255),2)
+            
             cv2.line(frameResulting,(left_points_up_2[0],20),(right_points_up_2[0],20),(255,255,255),2)
             dist_line_down = right_points_up[0] - left_points_up[0]
             dist_line_up = right_points_up_2[0] - left_points_up_2[0]
-            #print(right_points_up[0])
-            if (dist_line_up > 210 or dist_line_up < 140): #En promedio 170
                 
-
-            if (dist_line_down > 210 or dist_line_down < 140): #En promedio 170
-                count+=1
-                if count>5:
-                    cv2.line(frameResulting,(370,0),(380,400),(0,255,0),2) #linea derecha
-                    #cv2.line(frameResulting,(left_points_up_2[0],20),(right_points_up_2[0],20),(255,255,255),2) #linea izquierda
+            
+            if ((dist_line_down > 200)): #En promedio 170 # or dist_line_down < 150
+                if bocacalle == 0:
+                    right_points_up_last = int(statistics.median(right_points_up_arr))
+                    left_points_up_last = int(statistics.median(left_points_up_arr))
+                bocacalle=1
+            else:
+                if (indice_ultima_posicion_2 is 10):
+                    indice_ultima_posicion_2 = 0
+                right_points_up_arr[indice_ultima_posicion_2] = right_points_up[0]
+                left_points_up_arr[indice_ultima_posicion_2] = left_points_up[0]
+                right_points_up_med = int(statistics.median(right_points_up_arr))
+                left_points_up_med = int(statistics.median(left_points_up_arr))
+                indice_ultima_posicion_2 += 1
+                if ((right_points_up_med*0.9 < right_points_up[0] < right_points_up_med*1.1) and (left_points_up_med*0.9 < left_points_up[0] < left_points_up_med*1.1)):
+                    bocacalle=0
+                
+            print(bocacalle)
+            #print(dist_line_down)   
             if activar_linea_vertical:
                 cv2.line(frameResulting,(int(statistics.median(ultimas_posiciones)),0),(int(statistics.median(ultimas_posiciones)),320),(255,255,255),2)
 
