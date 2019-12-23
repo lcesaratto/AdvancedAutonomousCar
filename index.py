@@ -157,7 +157,7 @@ def line_keeping_grid_v1():
 
     lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
     upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
-
+    count=0
     # Check if camera opened successfully
     if not cap.isOpened():
         print("Error opening video stream or file")
@@ -360,7 +360,12 @@ def line_keeping_grid_v2():
 
     lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
     upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
-
+    count=0
+    bocacalle=0
+    right_points_up_arr = np.zeros(10)
+    left_points_up_arr = np.zeros(10)
+    right_points_up_med = 0
+    left_points_up_med = 0
     # Check if camera opened successfully
     if not cap.isOpened():
         print("Error opening video stream or file")
@@ -376,6 +381,7 @@ def line_keeping_grid_v2():
     indice_doblar_izquierda = 0
     activar_doblar_izquierda = False
 
+    indice_ultima_posicion_2 = 0
     # Read until video is completed
     while cap.isOpened():
         # Capture frame-by-frame
@@ -384,6 +390,8 @@ def line_keeping_grid_v2():
         if ret:
             right_points_up = np.array([0, 0])
             left_points_up = np.array([0, 0])
+            right_points_up_2 = np.array([0, 0])
+            left_points_up_2 = np.array([0, 0])
 
             frame = cv2.flip(frame, flipCode=-1)
             #Defino parametros HLS o HSV para detectar solo lineas negras 
@@ -450,13 +458,15 @@ def line_keeping_grid_v2():
                     cannyCut=canny_right[(200-row*40):(240-row*40),(40*column):(40+40*column)]
                     frameCut=frame[(200-row*40):(240-row*40),(40*column):(40+40*column)]
 
-                    if row == 2:
+                    if row == 2 or row == 5:
                         '''Aca procesamos cada frameCut'''
                         try:
 
                             # frameCut = canny_right
                             ## Aplico Transformada de Hough
                             lines_right = cv2.HoughLinesP(cannyCut, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
+                            if row==2:
+                                lines_right_row2 = lines_right;
                             # Draw lines on the image
                             if lines_right is not None:
                                 cant_lineas=len(lines_right)
@@ -480,18 +490,28 @@ def line_keeping_grid_v2():
                                     counter=0
                                     x1m=640
                                     x1M=0
+                                    x1M_2=0
+                                    right_points_up
                                     columnm=16
                                     for line in lines_right: #for line in lines:
                                         x1, y1, x2, y2 = line[0]
                                         
-                                        if(x1>x1M):
+                                        if(x1>x1M and row==2):
                                             x1M=x1
                                             right_points_up = [x1+40*column, y1+40*(5-row)]
                                             right_points_down = [x2, y2]
-                                        if(column<7):
+                                        if(column<7and row==2):
                                             # print(x1+40*column)
                                             left_points_up = [x1+40*column, y1+40*(5-row)]
                                             left_points_down = [x2, y2]
+                                        if(x1>x1M_2 and row==5):
+                                            x1M_2=x1
+                                            right_points_up_2 = [x1+40*column, y1+40*(5-row)]
+                                            right_points_down_2 = [x2, y2]
+                                        if(column<7and row==5):
+                                            # print(x1+40*column)
+                                            left_points_up_2 = [x1+40*column, y1+40*(5-row)]
+                                            left_points_down_2 = [x2, y2]    
                                         #x1m=x1
                                         #right_points = [(x1,y1), (x2,y2)]  
                                         cv2.line(frameCut,(x1,y1),(x2,y2),(0,0,255),2)
@@ -585,8 +605,34 @@ def line_keeping_grid_v2():
             ultimas_posiciones_izquierda[indice_doblar_izquierda] = left_points_up[0]
             indice_doblar_izquierda += 1
 
-            cv2.line(frameResulting,(left_points_up[0],140),(right_points_up[0],140),(255,255,255),2)
-
+            if bocacalle==1:
+                cv2.line(frameResulting,(left_points_up_last,140),(right_points_up_last,140),(0,255,0),2)
+            else:
+                cv2.line(frameResulting,(left_points_up[0],140),(right_points_up[0],140),(255,255,255),2)
+            
+            cv2.line(frameResulting,(left_points_up_2[0],20),(right_points_up_2[0],20),(255,255,255),2)
+            dist_line_down = right_points_up[0] - left_points_up[0]
+            dist_line_up = right_points_up_2[0] - left_points_up_2[0]
+                
+            
+            if ((dist_line_down > 200)): #En promedio 170 # or dist_line_down < 150
+                if bocacalle == 0:
+                    right_points_up_last = int(statistics.median(right_points_up_arr))
+                    left_points_up_last = int(statistics.median(left_points_up_arr))
+                bocacalle=1
+            else:
+                if (indice_ultima_posicion_2 is 10):
+                    indice_ultima_posicion_2 = 0
+                right_points_up_arr[indice_ultima_posicion_2] = right_points_up[0]
+                left_points_up_arr[indice_ultima_posicion_2] = left_points_up[0]
+                right_points_up_med = int(statistics.median(right_points_up_arr))
+                left_points_up_med = int(statistics.median(left_points_up_arr))
+                indice_ultima_posicion_2 += 1
+                if ((right_points_up_med*0.9 < right_points_up[0] < right_points_up_med*1.1) and (left_points_up_med*0.9 < left_points_up[0] < left_points_up_med*1.1)):
+                    bocacalle=0
+                
+            print(bocacalle)
+            #print(dist_line_down)   
             if activar_linea_vertical:
                 cv2.line(frameResulting,(last,0),(last,320),(255,255,255),2)
 
