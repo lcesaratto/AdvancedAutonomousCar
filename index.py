@@ -247,13 +247,13 @@ class SeguimientoLineas (object):
         return frameProcesado
 
     def _moverVehiculo(self):
-        if accionATomar[0] == 1:
+        if self.accionATomar[0] == 1:
             print("Girar a la derecha")
-        if accionATomar[1] == 1:
+        if self.accionATomar[1] == 1:
             print("Girar a la izquierda")
-        if accionATomar[2] == 1:
+        if self.accionATomar[2] == 1:
             print("Ir hacia adelante")
-        if accionATomar[3] == 1:
+        if self.accionATomar[3] == 1:
             print("Ir hacia atras")
 
     def run (self):
