@@ -34,6 +34,11 @@ class SeguimientoLineas (object):
         self.left_points_up = np.array([0, 0])
         self.right_points_up_2 = np.array([0, 0])
         self.left_points_up_2 = np.array([0, 0])
+
+        self.left_points_up_last = np.array([0, 0])
+        self.right_points_up_last = np.array([0, 0])
+
+        self.last = 0
         
     def _abrirCamara (self):
         # Create a VideoCapture object and read from input file
@@ -154,6 +159,59 @@ class SeguimientoLineas (object):
             print(e)
         return frameCut
 
+    def _detectarBocacalle(self, frameProcesado):
+        cv2.line(frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
+        dist_line_down = self.right_points_up[0] - self.left_points_up[0]
+        dist_line_up = self.right_points_up_2[0] - self.left_points_up_2[0]
+            
+        
+        if ((dist_line_down > 200)): #En promedio 170 # or dist_line_down < 150
+            if not self.bocacalle:
+                self.right_points_up_last = self.right_points_up_med#int(statistics.median(self.right_points_up_arr))
+                self.left_points_up_last = self.left_points_up_med#int(statistics.median(self.left_points_up_arr))
+            self.bocacalle=True
+        else:
+            if (self.indice_ultima_posicion_2 is 10):
+                self.indice_ultima_posicion_2 = 0
+            self.right_points_up_arr[self.indice_ultima_posicion_2] = self.right_points_up[0]
+            self.left_points_up_arr[self.indice_ultima_posicion_2] = self.left_points_up[0]
+            self.right_points_up_med = int(statistics.median(self.right_points_up_arr))
+            self.left_points_up_med = int(statistics.median(self.left_points_up_arr))
+            self.indice_ultima_posicion_2 += 1
+            if ((self.right_points_up_med*0.9 < self.right_points_up[0] < self.right_points_up_med*1.1) and (self.left_points_up_med*0.9 < self.left_points_up[0] < self.left_points_up_med*1.1)):
+                self.bocacalle=False
+
+    def _detectarCurvaDerecha(self, frameProcesado):
+        if self.activar_doblar_derecha:
+            if (not (statistics.median(self.ultimas_posiciones_derecha)*0.8 <= self.right_points_up[0] <= 
+            statistics.median(self.ultimas_posiciones_derecha)*1.2)) and (statistics.median(self.ultimas_posiciones_izquierda)*0.8 <= 
+            self.left_points_up[0] <= statistics.median(self.ultimas_posiciones_izquierda)*1.2):
+                self.activar_linea_vertical = True
+                self.activar_doblar_derecha = False
+                self.ultimas_posiciones_final = self.ultimas_posiciones
+                self.last = int(statistics.median(self.ultimas_posiciones_final))
+
+        if (self.indice_ultima_posicion is 10):
+            self.indice_ultima_posicion = 0
+        self.ultimas_posiciones[self.indice_ultima_posicion] = (self.left_points_up[0]+self.right_points_up[0])/2
+        self.indice_ultima_posicion += 1
+
+        if (self.indice_doblar_derecha is 10):
+            self.indice_doblar_derecha = 0
+        self.ultimas_posiciones_derecha[self.indice_doblar_derecha] = self.right_points_up[0]
+        self.indice_doblar_derecha += 1
+
+        if (self.indice_doblar_izquierda is 10):
+            self.indice_doblar_izquierda = 0
+        self.ultimas_posiciones_izquierda[self.indice_doblar_izquierda] = self.left_points_up[0]
+        self.indice_doblar_izquierda += 1
+
+        
+        if self.activar_linea_vertical:
+            cv2.line(frameProcesado,(self.last,0),(self.last,320),(255,255,255),2)
+        
+        return frameProcesado
+
     def run (self):
         while self.cap.isOpened():
             ret, frame = self.cap.read()
@@ -163,6 +221,9 @@ class SeguimientoLineas (object):
                 filasDeseadas = [2, 5]
                 columnasDeseadas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
                 frameProcesado = frameOriginal
+                # frameProcesado = [[[]]]
+                # x = [[] for i in range(3)]
+                print(frameProcesado.shape)
                 for fila in filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
                     for columna in columnasDeseadas:
                         porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginal, frame, fila, columna)
@@ -175,60 +236,14 @@ class SeguimientoLineas (object):
                 # if (frame == frameResulting).all(): #Esto es para verificar que el frame original sea igual al reconstruido
                 # print ("Excelente!")
 
-
                 if self.bocacalle:
-                    cv2.line(frameProcesado,(left_points_up_last,140),(right_points_up_last,140),(0,255,0),2)
+                    cv2.line(frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
                 else:
                     cv2.line(frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
+
+                self._detectarBocacalle(frameProcesado)
                 
-                cv2.line(frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
-                dist_line_down = self.right_points_up[0] - self.left_points_up[0]
-                dist_line_up = self.right_points_up_2[0] - self.left_points_up_2[0]
-                    
-                
-                if ((dist_line_down > 200)): #En promedio 170 # or dist_line_down < 150
-                    if not self.bocacalle:
-                        right_points_up_last = int(statistics.median(self.right_points_up_arr))
-                        left_points_up_last = int(statistics.median(self.left_points_up_arr))
-                    self.bocacalle=True
-                else:
-                    if (self.indice_ultima_posicion_2 is 10):
-                        self.indice_ultima_posicion_2 = 0
-                    self.right_points_up_arr[self.indice_ultima_posicion_2] = self.right_points_up[0]
-                    self.left_points_up_arr[self.indice_ultima_posicion_2] = self.left_points_up[0]
-                    self.right_points_up_med = int(statistics.median(self.right_points_up_arr))
-                    self.left_points_up_med = int(statistics.median(self.left_points_up_arr))
-                    self.indice_ultima_posicion_2 += 1
-                    if ((self.right_points_up_med*0.9 < self.right_points_up[0] < self.right_points_up_med*1.1) and (self.left_points_up_med*0.9 < self.left_points_up[0] < self.left_points_up_med*1.1)):
-                        self.bocacalle=False
-
-                if self.activar_doblar_derecha:
-                    if (not (statistics.median(self.ultimas_posiciones_derecha)*0.8 <= self.right_points_up[0] <= 
-                    statistics.median(self.ultimas_posiciones_derecha)*1.2)) and (statistics.median(self.ultimas_posiciones_izquierda)*0.8 <= 
-                    self.left_points_up[0] <= statistics.median(self.ultimas_posiciones_izquierda)*1.2):
-                        self.activar_linea_vertical = True
-                        self.activar_doblar_derecha = False
-                        self.ultimas_posiciones_final = self.ultimas_posiciones
-                        last = int(statistics.median(self.ultimas_posiciones_final))
-
-                if (self.indice_ultima_posicion is 10):
-                    self.indice_ultima_posicion = 0
-                self.ultimas_posiciones[self.indice_ultima_posicion] = (self.left_points_up[0]+self.right_points_up[0])/2
-                self.indice_ultima_posicion += 1
-
-                if (self.indice_doblar_derecha is 10):
-                    self.indice_doblar_derecha = 0
-                self.ultimas_posiciones_derecha[self.indice_doblar_derecha] = self.right_points_up[0]
-                self.indice_doblar_derecha += 1
-
-                if (self.indice_doblar_izquierda is 10):
-                    self.indice_doblar_izquierda = 0
-                self.ultimas_posiciones_izquierda[self.indice_doblar_izquierda] = self.left_points_up[0]
-                self.indice_doblar_izquierda += 1
-
-                
-                if self.activar_linea_vertical:
-                    cv2.line(frameProcesado,(last,0),(last,320),(255,255,255),2)
+                frameProcesado = self._detectarCurvaDerecha(frameProcesado)
 
                 # Grid lines at these intervals (in pixels)
                 # dx and dy can be different
