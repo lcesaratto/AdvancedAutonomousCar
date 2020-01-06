@@ -154,24 +154,28 @@ class SeguimientoLineas (object):
             print(e)
         return frameCut
 
+    def _ReconstruirFrame(self, frameProcesado, porcionFrameProcesado, fila, columna):
+        for x in range(40): #filas
+            for j in range(40): #columnas
+                # print(frameCut[x][j])
+                frameProcesado[200-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
+        return frameProcesado
+
+    
     def run (self):
         while self.cap.isOpened():
-            ret, frame = self.cap.read()
+            ret, frameCompleto = self.cap.read()
             if ret:
-                frameOriginal = self._prepararFrame(frame)
-                frame = self._aplicarFiltrosMascaras(frameOriginal)
+                frameOriginalRecortado = self._prepararFrame(frameCompleto)
+                frameConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
                 filasDeseadas = [2, 5]
                 columnasDeseadas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-                frameProcesado = frameOriginal
+                frameProcesado = frameOriginalRecortado
                 for fila in filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
                     for columna in columnasDeseadas:
-                        porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginal, frame, fila, columna)
+                        porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameConFiltro, fila, columna)
                         porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
-                        for x in range(40): #filas
-                            for j in range(40): #columnas
-                                # print(frameCut[x][j])
-                                frameProcesado[200-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
-
+                        frameProcesado = self._ReconstruirFrame(frameProcesado, porcionFrameProcesado, fila, columna)
                 # if (frame == frameResulting).all(): #Esto es para verificar que el frame original sea igual al reconstruido
                 # print ("Excelente!")
 
