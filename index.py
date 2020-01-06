@@ -10,8 +10,13 @@ class SeguimientoLineas (object):
         self.cap = self._abrirCamara()
         self.fps, self.width, self.height = self._obtenerParametrosFrame()
 
+        self.filasDeseadas = [2]
+        self.columnasDeseadas = []
+
+        self.ingresoCurva = True
+
         # self.count=0
-        self.bocacalle=False
+        self.bocacalleDetectada=False
         self.right_points_up_arr = np.zeros(10)
         self.left_points_up_arr = np.zeros(10)
         self.right_points_up_med = 0
@@ -23,7 +28,7 @@ class SeguimientoLineas (object):
         self.activar_linea_vertical = False
         self.ultimas_posiciones_derecha = np.zeros(10)
         self.indice_doblar_derecha = 0
-        self.activar_doblar_derecha = False
+        self.cartelDetectado = False
         self.ultimas_posiciones_izquierda = np.zeros(10)
         self.indice_doblar_izquierda = 0
         self.activar_doblar_izquierda = False
@@ -37,8 +42,10 @@ class SeguimientoLineas (object):
 
         self.left_points_up_last = np.array([0, 0])
         self.right_points_up_last = np.array([0, 0])
-
+        self.DentroDeBocacalle = False
         self.last = 0
+
+        self.accionATOmar = [0, 0, 0, 0]
         
     def _abrirCamara (self):
         # Create a VideoCapture object and read from input file
@@ -159,25 +166,29 @@ class SeguimientoLineas (object):
             print(e)
         return frameCut
 
-    def _ReconstruirFrame(self, frameProcesado, porcionFrameProcesado, fila, columna):
+    def _reconstruirFrame(self, frameProcesado, porcionFrameProcesado, fila, columna):
         for x in range(40): #filas
             for j in range(40): #columnas
                 # print(frameCut[x][j])
                 frameProcesado[200-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
         return frameProcesado
 
-    
     def _detectarBocacalle(self, frameProcesado):
+        if self.bocacalleDetectada:
+            cv2.line(frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
+        else:
+            cv2.line(frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
+
         cv2.line(frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
         dist_line_down = self.right_points_up[0] - self.left_points_up[0]
         dist_line_up = self.right_points_up_2[0] - self.left_points_up_2[0]
             
         
         if ((dist_line_down > 200)): #En promedio 170 # or dist_line_down < 150
-            if not self.bocacalle:
+            if not self.bocacalleDetectada:
                 self.right_points_up_last = self.right_points_up_med#int(statistics.median(self.right_points_up_arr))
                 self.left_points_up_last = self.left_points_up_med#int(statistics.median(self.left_points_up_arr))
-            self.bocacalle=True
+            self.bocacalleDetectada=True
         else:
             if (self.indice_ultima_posicion_2 is 10):
                 self.indice_ultima_posicion_2 = 0
@@ -187,15 +198,18 @@ class SeguimientoLineas (object):
             self.left_points_up_med = int(statistics.median(self.left_points_up_arr))
             self.indice_ultima_posicion_2 += 1
             if ((self.right_points_up_med*0.9 < self.right_points_up[0] < self.right_points_up_med*1.1) and (self.left_points_up_med*0.9 < self.left_points_up[0] < self.left_points_up_med*1.1)):
-                self.bocacalle=False
+                self.bocacalleDetectada=False
 
     def _detectarCurvaDerecha(self, frameProcesado):
-        if self.activar_doblar_derecha:
+        # if self.cartelDetectado:
+        if self.ingresoCurva:
             if (not (statistics.median(self.ultimas_posiciones_derecha)*0.8 <= self.right_points_up[0] <= 
             statistics.median(self.ultimas_posiciones_derecha)*1.2)) and (statistics.median(self.ultimas_posiciones_izquierda)*0.8 <= 
             self.left_points_up[0] <= statistics.median(self.ultimas_posiciones_izquierda)*1.2):
                 self.activar_linea_vertical = True
-                self.activar_doblar_derecha = False
+                self.ingresoCurva = False
+                self.columnasDeseadas = [7,8]
+                # self.cartelDetectado = False
                 self.ultimas_posiciones_final = self.ultimas_posiciones
                 self.last = int(statistics.median(self.ultimas_posiciones_final))
 
@@ -220,40 +234,63 @@ class SeguimientoLineas (object):
         
         return frameProcesado
 
+    def _dibujarGrilla(self, frameProcesado):
+        # Grid lines at these intervals (in pixels)
+        # dx and dy can be different
+        dx, dy = 40,40
+        # Custom (rgb) grid color
+        grid_color = [255,0,0]# [0,0,0]
+        # Modify the image to include the grid
+        frameProcesado[:,::dy,:] = grid_color
+        frameProcesado[::dx,:,:] = grid_color
+
+        return frameProcesado
+
+    def _moverVehiculo(self):
+        if accionATomar[0] == 1:
+            print("Girar a la derecha")
+        if accionATomar[1] == 1:
+            print("Girar a la izquierda")
+        if accionATomar[2] == 1:
+            print("Ir hacia adelante")
+        if accionATomar[3] == 1:
+            print("Ir hacia atras")
+
     def run (self):
         while self.cap.isOpened():
             ret, frameCompleto = self.cap.read()
             if ret:
                 frameOriginalRecortado = self._prepararFrame(frameCompleto)
                 frameConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
-                filasDeseadas = [2, 5]
-                columnasDeseadas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+                
                 frameProcesado = frameOriginalRecortado
-                for fila in filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
-                    for columna in columnasDeseadas:
+                for fila in self.filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
+                    for columna in range(16):
                         porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameConFiltro, fila, columna)
                         porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
-                        frameProcesado = self._ReconstruirFrame(frameProcesado, porcionFrameProcesado, fila, columna)
-                # if (frame == frameResulting).all(): #Esto es para verificar que el frame original sea igual al reconstruido
-                # print ("Excelente!")
-
-                if self.bocacalle:
-                    cv2.line(frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
-                else:
-                    cv2.line(frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
-
-                self._detectarBocacalle(frameProcesado)
+                        frameProcesado = self._reconstruirFrame(frameProcesado, porcionFrameProcesado, fila, columna)
+                for columna in self.columnasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
+                    for fila in range(6):
+                        if fila not in self.filasDeseadas:
+                            porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameConFiltro, fila, columna)
+                            porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
+                            frameProcesado = self._reconstruirFrame(frameProcesado, porcionFrameProcesado, fila, columna)
                 
-                frameProcesado = self._detectarCurvaDerecha(frameProcesado)
-
-                # Grid lines at these intervals (in pixels)
-                # dx and dy can be different
-                dx, dy = 40,40
-                # Custom (rgb) grid color
-                grid_color = [255,0,0]# [0,0,0]
-                # Modify the image to include the grid
-                frameProcesado[:,::dy,:] = grid_color
-                frameProcesado[::dx,:,:] = grid_color
+                if self.cartelDetectado:
+                    self.filasDeseadas = [2, 5]
+                    self._detectarBocacalle(frameProcesado)
+                    #
+                    if self.bocacalleDetectada:
+                        self.DentroDeBocacalle = True
+                    if (self.bocacalleDetectada == False and self.DentroDeBocacalle):
+                        self.cartelDetectado = False
+                        self.DentroDeBocacalle = False
+                        self.filasDeseadas = [2]
+                else:
+                    frameProcesado = self._detectarCurvaDerecha(frameProcesado)
+                    
+                
+                frameProcesado = self._dibujarGrilla(frameProcesado)
 
                 # Display the resulting frame
                 cv2.imshow('frameResulting', frameProcesado)
@@ -263,7 +300,7 @@ class SeguimientoLineas (object):
                 if key == ord('q'):  # 25fps
                     break
                 elif key == ord('k'):
-                    self.activar_doblar_derecha = True
+                    self.cartelDetectado = True
             
             else: # Break the loop
                 break
