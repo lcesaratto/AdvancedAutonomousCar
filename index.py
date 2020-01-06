@@ -10,6 +10,8 @@ class SeguimientoLineas (object):
         self.cap = self._abrirCamara()
         self.fps, self.width, self.height = self._obtenerParametrosFrame()
 
+        self.frameProcesado = []
+
         self.filasDeseadas = [2]
         self.columnasDeseadas = []
 
@@ -42,10 +44,10 @@ class SeguimientoLineas (object):
 
         self.left_points_up_last = np.array([0, 0])
         self.right_points_up_last = np.array([0, 0])
-        self.DentroDeBocacalle = False
+        self.dentroDeBocacalle = False
         self.last = 0
 
-        self.accionATOmar = [0, 0, 0, 0]
+        self.accionATomar = [0, 0, 0, 0]
         
     def _abrirCamara (self):
         # Create a VideoCapture object and read from input file
@@ -166,20 +168,18 @@ class SeguimientoLineas (object):
             print(e)
         return frameCut
 
-    def _reconstruirFrame(self, frameProcesado, porcionFrameProcesado, fila, columna):
+    def _reconstruirFrame(self, porcionFrameProcesado, fila, columna):
         for x in range(40): #filas
             for j in range(40): #columnas
-                # print(frameCut[x][j])
-                frameProcesado[200-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
-        return frameProcesado
+                self.frameProcesado[200-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
 
-    def _detectarBocacalle(self, frameProcesado):
+    def _detectarBocacalle(self):
         if self.bocacalleDetectada:
-            cv2.line(frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
+            cv2.line(self.frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
         else:
-            cv2.line(frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
+            cv2.line(self.frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
 
-        cv2.line(frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
+        cv2.line(self.frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
         dist_line_down = self.right_points_up[0] - self.left_points_up[0]
         dist_line_up = self.right_points_up_2[0] - self.left_points_up_2[0]
             
@@ -200,8 +200,7 @@ class SeguimientoLineas (object):
             if ((self.right_points_up_med*0.9 < self.right_points_up[0] < self.right_points_up_med*1.1) and (self.left_points_up_med*0.9 < self.left_points_up[0] < self.left_points_up_med*1.1)):
                 self.bocacalleDetectada=False
 
-    def _detectarCurvaDerecha(self, frameProcesado):
-        # if self.cartelDetectado:
+    def _detectarCurvaDerecha(self):
         if self.ingresoCurva:
             if (not (statistics.median(self.ultimas_posiciones_derecha)*0.8 <= self.right_points_up[0] <= 
             statistics.median(self.ultimas_posiciones_derecha)*1.2)) and (statistics.median(self.ultimas_posiciones_izquierda)*0.8 <= 
@@ -230,21 +229,36 @@ class SeguimientoLineas (object):
 
         
         if self.activar_linea_vertical:
-            cv2.line(frameProcesado,(self.last,0),(self.last,320),(255,255,255),2)
-        
-        return frameProcesado
+            cv2.line(self.frameProcesado,(self.last,0),(self.last,320),(255,255,255),2)
 
-    def _dibujarGrilla(self, frameProcesado):
+    def _dibujarGrilla(self):
         # Grid lines at these intervals (in pixels)
         # dx and dy can be different
         dx, dy = 40,40
         # Custom (rgb) grid color
         grid_color = [255,0,0]# [0,0,0]
         # Modify the image to include the grid
-        frameProcesado[:,::dy,:] = grid_color
-        frameProcesado[::dx,:,:] = grid_color
+        self.frameProcesado[:,::dy,:] = grid_color
+        self.frameProcesado[::dx,:,:] = grid_color
 
-        return frameProcesado
+    def _calcularDistanciasLineaRecta(self):
+        
+        DISTANCIA_A_MANTENER_IZQ = 116
+        DISTANCIA_A_MANTENER_DER = 58
+
+        distanciaIzquierda = (self.width/2) - self.left_points_up[0]
+        distanciaDerecha = self.right_points_up[0] - (self.width/2)
+
+        print("IZQUIERDA:   ", distanciaIzquierda, "    DERECHA:    ",distanciaDerecha)
+
+        if DISTANCIA_A_MANTENER_IZQ*1.05 < distanciaIzquierda:
+            self.accionATomar = [1, 0, 1, 0]
+        elif DISTANCIA_A_MANTENER_IZQ > distanciaIzquierda:
+            self.accionATomar = [0, 0, 0, 0]
+        if DISTANCIA_A_MANTENER_DER*1.05 < distanciaDerecha:
+            self.accionATomar = [0, 1, 1, 0]
+        elif DISTANCIA_A_MANTENER_DER > distanciaDerecha:
+            self.accionATomar = [0, 0, 0, 0]
 
     def _moverVehiculo(self):
         if self.accionATomar[0] == 1:
@@ -263,43 +277,45 @@ class SeguimientoLineas (object):
                 frameOriginalRecortado = self._prepararFrame(frameCompleto)
                 frameConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
                 
-                frameProcesado = frameOriginalRecortado
+                self.frameProcesado = frameOriginalRecortado
                 for fila in self.filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
                     for columna in range(16):
                         porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameConFiltro, fila, columna)
                         porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
-                        frameProcesado = self._reconstruirFrame(frameProcesado, porcionFrameProcesado, fila, columna)
+                        self._reconstruirFrame(porcionFrameProcesado, fila, columna)
                 for columna in self.columnasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
                     for fila in range(6):
                         if fila not in self.filasDeseadas:
                             porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameConFiltro, fila, columna)
                             porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
-                            frameProcesado = self._reconstruirFrame(frameProcesado, porcionFrameProcesado, fila, columna)
+                            self._reconstruirFrame(porcionFrameProcesado, fila, columna)
                 
                 if self.cartelDetectado:
                     self.filasDeseadas = [2, 5]
-                    self._detectarBocacalle(frameProcesado)
-                    #
+                    self._detectarBocacalle()
+                    # Aca se limpia la bandera bocacalleDetectada mediante otra bandera dentroDeBocacalle. NO CONFUNDIR
                     if self.bocacalleDetectada:
-                        self.DentroDeBocacalle = True
-                    if (self.bocacalleDetectada == False and self.DentroDeBocacalle):
+                        self.dentroDeBocacalle = True
+                    if (self.bocacalleDetectada == False and self.dentroDeBocacalle):
                         self.cartelDetectado = False
-                        self.DentroDeBocacalle = False
+                        self.dentroDeBocacalle = False
                         self.filasDeseadas = [2]
                 else:
-                    frameProcesado = self._detectarCurvaDerecha(frameProcesado)
+                    self._detectarCurvaDerecha()
+
+                self._calcularDistanciasLineaRecta()
+                self._moverVehiculo()
                     
-                
-                frameProcesado = self._dibujarGrilla(frameProcesado)
+                self._dibujarGrilla()
 
                 # Display the resulting frame
-                cv2.imshow('frameResulting', frameProcesado)
+                cv2.imshow('frameResulting', self.frameProcesado)
 
                 # Press Q on keyboard to  exit
                 key = cv2.waitKey(10)
                 if key == ord('q'):  # 25fps
                     break
-                elif key == ord('k'):
+                elif key == ord('k'): #Con esta tecla simulamos el cartel a detectar
                     self.cartelDetectado = True
             
             else: # Break the loop
