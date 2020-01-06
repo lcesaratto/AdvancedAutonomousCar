@@ -1,136 +1,261 @@
 import cv2
 import numpy as np
 from pyzbar import pyzbar
-from MLfunctions import *
+# from MLfunctions import *
 import matplotlib.pyplot as plt
 import statistics
-# try:
-#     from PIL import Image
-# except ImportError:
-#     import Image
 
-def line_keeping():
-    # Create a VideoCapture object and read from input file
-    # If the input is the camera, pass 0 instead of the video file name
-    cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
+class SeguimientoLineas (object):
+    def __init__(self):
+        self.cap = self._abrirCamara()
+        self.fps, self.width, self.height = self._obtenerParametrosFrame()
 
-    # Check if camera opened successfully
-    if not cap.isOpened():
-        print("Error opening video stream or file")
+        # self.count=0
+        self.bocacalle=False
+        self.right_points_up_arr = np.zeros(10)
+        self.left_points_up_arr = np.zeros(10)
+        self.right_points_up_med = 0
+        self.left_points_up_med = 0
+        # # Array para almacenar las ultimas 10 posiciones del vehiculo
+        self.ultimas_posiciones = np.zeros(10)
+        self.indice_ultima_posicion = 0
 
-    # Read until video is completed
-    while cap.isOpened():
-        # Capture frame-by-frame
-        ret, frame = cap.read()
+        self.activar_linea_vertical = False
+        self.ultimas_posiciones_derecha = np.zeros(10)
+        self.indice_doblar_derecha = 0
+        self.activar_doblar_derecha = False
+        self.ultimas_posiciones_izquierda = np.zeros(10)
+        self.indice_doblar_izquierda = 0
+        self.activar_doblar_izquierda = False
 
+        self.indice_ultima_posicion_2 = 0
 
-        if ret:
+        self.right_points_up = np.array([0, 0])
+        self.left_points_up = np.array([0, 0])
+        self.right_points_up_2 = np.array([0, 0])
+        self.left_points_up_2 = np.array([0, 0])
+        
+    def _abrirCamara (self):
+        # Create a VideoCapture object and read from input file
+        # If the input is the camera, pass 0 instead of the video file name
+        cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
+        # Check if camera opened successfully
+        if not cap.isOpened():
+            print("Error opening video stream or file")
+        return cap
 
-            frame = cv2.flip(frame, flipCode=-1)
-            #Defino parametros HLS o HSV para detectar solo lineas negras 
-            lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
-            upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
-            #Divido la imagen en 2 frames distintos (derecha e izquierda) para detectar una sola linea por frame
-            width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-            height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
-            fps =  cap.get(cv2.CAP_PROP_FPS)
-            #frame_right = frame[0:int(height*0.5),0:int(width*0.5)]#frame_right = frame[0:int(height*0.5),0:int(width*0.5)]
-            frame_right = frame[0:int(height*0.5),0:int(width*0.4)] #0.5
-            frame_left = frame[0:int(height*0.5),int(width*0.5):int(width)]
-            frame_left = cv2.flip(frame_left, flipCode=-1)
-            frame_right = cv2.flip(frame_right, flipCode=-1)            
-            try:
-                # ------- Frame Izquierdo -------
-                #Aplico filtro de color con los parametros ya definidos
-                hsv_left = cv2.cvtColor(frame_left, cv2.COLOR_BGR2HLS) #BRG2HLS
-                mask_left = cv2.inRange(hsv_left, lower_black, upper_black)
-                res_left = cv2.bitwise_and(frame_left, frame_left, mask=mask_left)
+    def _obtenerParametrosFrame(self):
+        fps =  self.cap.get(cv2.CAP_PROP_FPS)
+        width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH )
+        height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        return fps, width, height
 
-                #Aplico filtro pasa bajos y deteccion de lineas por Canny
-                dif_gray_left = cv2.GaussianBlur(mask_left, (3, 3), 0) #(mask, (5, 5), 0)
-                canny_left = cv2.Canny(dif_gray_left, 1, 500) # 25, 175)
-                #Aplico Transformada de Hough
-                lines_left = cv2.HoughLinesP(canny_left, 1, np.pi / 180, 20, minLineLength=5, maxLineGap=20) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
-                # Draw lines on the image
-                for line in lines_left: #for line in lines:
-                    x1, y1, x2, y2 = line[0]
-                    cv2.line(frame_left, (x1, y1), (x2, y2), (255, 0, 0), 5)
+    def _prepararFrame (self, frame):
+        # frame = cv2.flip(frame, flipCode=-1)
+        frame = frame[0:int(self.height*0.5),0:int(self.width)]
+        return frame
 
-            except:
-                print("No se detectaron lineas izquierda")
-            try:
-                # ------- Frame Derecho -------
-                #Aplico filtro de color con los parametros ya definidos
-                hsv_right = cv2.cvtColor(frame_right, cv2.COLOR_BGR2HLS) #BRG2HLS
-                mask_right = cv2.inRange(hsv_right, lower_black, upper_black)
-                res_right = cv2.bitwise_and(frame_right, frame_right, mask=mask_right)
+    def _aplicarFiltrosMascaras (self, frame):
+        #Defino parametros HLS o HSV para detectar solo lineas negras 
+        lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
+        upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
 
-                #Aplico filtro pasa bajos y deteccion de lineas por Canny
-                dif_gray_right = cv2.GaussianBlur(mask_right, (3, 3), 0) #(mask, (5, 5), 0)
-                canny_right = cv2.Canny(dif_gray_right, 1, 500) # 25, 175)
-                #Aplico Transformada de Hough
-                lines_right = cv2.HoughLinesP(canny_right, 1, np.pi / 180, 20, minLineLength=5, maxLineGap=10) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
-                # Draw lines on the image
-                cant_lineas=len(lines_right)
-                #print(cant_lineas)
+        #Aplico filtro de color con los parametros ya definidos
+        # hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS) #BRG2HLS
+        hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #BRG2HLS
+        # cv2.imshow('framefilterHSV', hsv_right)
+        mask_right = cv2.inRange(frame, lower_black, upper_black)
+        res_right = cv2.bitwise_and(frame, frame, mask=mask_right)
+        # cv2.imshow('framefilter', res_right)
+
+        #Aplico filtro pasa bajos y deteccion de lineas por Canny
+        '''
+        kernel = np.ones((3,3), np.uint8)
+        frame_e = cv2.erode(frame, kernel, iterations=1)
+        gray_right = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY) 
+        (thresh, bw_right) = cv2.threshold(gray_right, 40, 255, cv2.THRESH_BINARY)
+        #dif_gray_right = cv2.GaussianBlur(bw_right, (1, 1), 0) #(mask, (5, 5), 0)
+        cv2.imshow('framefilterdif', frame_e)
+        canny_right = cv2.Canny(bw_right, 25, 175) # 25, 175)
+        cv2.imshow('framefilter', canny_right)
+        '''
+        #Umbral Dinamico
+        kernel = np.ones((3,3), np.uint8)
+        frame_e = cv2.erode(frame, kernel, iterations=1)
+        gray = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY)
+        gray = cv2.GaussianBlur(gray, (3, 3), 0)
+        gray = cv2.medianBlur(gray, 5)
+        dst2 = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 9, 5)
+        # cv2.imshow('framefilterdif', dst2)
+        dif_gray_right = cv2.GaussianBlur(dst2, (11, 11), 0) #(mask, (5, 5), 0)
+        #cv2.imshow('framefilterdif', frame_e)
+        canny_right = cv2.Canny(dif_gray_right, 25, 175) # 25, 175)
+        kernel = np.ones((7,7), np.uint8)
+        canny_right = cv2.morphologyEx(canny_right, cv2.MORPH_CLOSE, kernel)
+        kernel = np.ones((3,3), np.uint8)
+        canny_right = cv2.erode(canny_right, kernel, iterations=1)
+        # cv2.imshow('framefilter', canny_right)
+        return canny_right
+
+    def _obtenerPorcionesFrame (self, frameOriginal, frame, row, column):
+        frameCut=frame[(200-row*40):(240-row*40),(40*column):(40+40*column)]
+        frameOriginalCut=frameOriginal[(200-row*40):(240-row*40),(40*column):(40+40*column)]
+        return frameCut, frameOriginalCut
+
+    def _procesarPorcionFrame (self, cannyCut, frameCut, fila, columna):
+
+        try:
+            # frameCut = canny_right
+            ## Aplico Transformada de Hough
+            lines = cv2.HoughLinesP(cannyCut, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
+
+            # Draw lines on the image
+            if lines is not None:
+                cant_lineas=len(lines)
+                # print(cant_lineas)
                 
-                if cant_lineas>7:
-                    print('Se detecto una curva')
-                else:
-                    print('Se detecto una linea')
-                
-                    x1prom=0
-                    x2prom=0
-                    y1prom=0
-                    y2prom=0
-                    cant=0
+                if cant_lineas>100: # print('Se detecto una curva')
+                    frameCut[:,:,2] = frameCut[:,:,2] + 50
+                else: # print('Se detecto una linea')
+                    x1M=0
+                    x1M_2=0
 
-                    righty_sum=0
-                    lefty_sum=0
-                    counter=0
-                    x1m=0
-                    for line in lines_right: #for line in lines:
+
+                    for line in lines:
                         x1, y1, x2, y2 = line[0]
-                        if(x1>x1m):
-                            x1m=x1
-                            right_points = [(x1,y1), (x2,y2)]
-                    #right_points = [(x1,y1), (x2,y2)]
-                    [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
+
+                        if(x1>x1M and fila==2):
+                            x1M=x1
+                            self.right_points_up = [x1+40*columna, y1+40*(5-fila)]
+                            self.right_points_down = [x2, y2]
+                        if(columna<7 and fila==2):
+                            # print(x1+40*column)
+                            self.left_points_up = [x1+40*columna, y1+40*(5-fila)]
+                            self.left_points_down = [x2, y2]
+                        if(x1>x1M_2 and fila==5):
+                            x1M_2=x1
+                            self.right_points_up_2 = [x1+40*columna, y1+40*(5-fila)]
+                            self.right_points_down_2 = [x2, y2]
+                        if(columna<7 and fila==5):
+                            # print(x1+40*column)
+                            self.left_points_up_2 = [x1+40*columna, y1+40*(5-fila)]
+                            self.left_points_down_2 = [x2, y2]    
+                        # x1m=x1
+                        # right_points = [(x1,y1), (x2,y2)]
+
+                        cv2.line(frameCut,(x1,y1),(x2,y2),(0,0,255),2)
+                        # cv2.line(frameCut,(frameCut.shape[1]-1,x1),(0,y1),255,2)
+
+                    frameCut[:,:,0] = frameCut[:,:,0]+50
+            else:
+                frameCut[:,:,1] = frameCut[:,:,1] + 50        
+
+        except Exception as e:
+            print(e)
+        return frameCut
+
+    def run (self):
+        while self.cap.isOpened():
+            ret, frame = self.cap.read()
+            if ret:
+                frameOriginal = self._prepararFrame(frame)
+                frame = self._aplicarFiltrosMascaras(frameOriginal)
+                filasDeseadas = [2, 5]
+                columnasDeseadas = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+                frameProcesado = frameOriginal
+                for fila in filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
+                    for columna in columnasDeseadas:
+                        porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginal, frame, fila, columna)
+                        porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
+                        for x in range(40): #filas
+                            for j in range(40): #columnas
+                                # print(frameCut[x][j])
+                                frameProcesado[200-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
+
+                # if (frame == frameResulting).all(): #Esto es para verificar que el frame original sea igual al reconstruido
+                # print ("Excelente!")
+
+
+                if self.bocacalle:
+                    cv2.line(frameProcesado,(left_points_up_last,140),(right_points_up_last,140),(0,255,0),2)
+                else:
+                    cv2.line(frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
+                
+                cv2.line(frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
+                dist_line_down = self.right_points_up[0] - self.left_points_up[0]
+                dist_line_up = self.right_points_up_2[0] - self.left_points_up_2[0]
                     
-                    # Now find two extreme points on the line to draw line
-                    lefty = int((-x*vy/vx) + y)
-                    righty = int(((frame_right.shape[1]-x)*vy/vx)+y)
+                
+                if ((dist_line_down > 200)): #En promedio 170 # or dist_line_down < 150
+                    if not self.bocacalle:
+                        right_points_up_last = int(statistics.median(self.right_points_up_arr))
+                        left_points_up_last = int(statistics.median(self.left_points_up_arr))
+                    self.bocacalle=True
+                else:
+                    if (self.indice_ultima_posicion_2 is 10):
+                        self.indice_ultima_posicion_2 = 0
+                    self.right_points_up_arr[self.indice_ultima_posicion_2] = self.right_points_up[0]
+                    self.left_points_up_arr[self.indice_ultima_posicion_2] = self.left_points_up[0]
+                    self.right_points_up_med = int(statistics.median(self.right_points_up_arr))
+                    self.left_points_up_med = int(statistics.median(self.left_points_up_arr))
+                    self.indice_ultima_posicion_2 += 1
+                    if ((self.right_points_up_med*0.9 < self.right_points_up[0] < self.right_points_up_med*1.1) and (self.left_points_up_med*0.9 < self.left_points_up[0] < self.left_points_up_med*1.1)):
+                        self.bocacalle=False
 
-                        #Finally draw the line
-                    if (abs(vy/vx) > 1) & (abs(vy/vx) < 30) :
-                        righty_sum+=righty
-                        lefty_sum+=lefty
-                        counter+=1
+                if self.activar_doblar_derecha:
+                    if (not (statistics.median(self.ultimas_posiciones_derecha)*0.8 <= self.right_points_up[0] <= 
+                    statistics.median(self.ultimas_posiciones_derecha)*1.2)) and (statistics.median(self.ultimas_posiciones_izquierda)*0.8 <= 
+                    self.left_points_up[0] <= statistics.median(self.ultimas_posiciones_izquierda)*1.2):
+                        self.activar_linea_vertical = True
+                        self.activar_doblar_derecha = False
+                        self.ultimas_posiciones_final = self.ultimas_posiciones
+                        last = int(statistics.median(self.ultimas_posiciones_final))
 
-                    if (counter!=0) & (righty_sum!=0) & (lefty_sum!=0):
-                        righty=righty_sum//counter
-                        lefty=lefty_sum//counter
-                        cv2.line(frame_right,(frame_right.shape[1]-1,righty),(0,lefty),255,2)
-                        print(frame_right.shape[1]-1)
+                if (self.indice_ultima_posicion is 10):
+                    self.indice_ultima_posicion = 0
+                self.ultimas_posiciones[self.indice_ultima_posicion] = (self.left_points_up[0]+self.right_points_up[0])/2
+                self.indice_ultima_posicion += 1
 
-            except Exception as e:
-                print(e)
+                if (self.indice_doblar_derecha is 10):
+                    self.indice_doblar_derecha = 0
+                self.ultimas_posiciones_derecha[self.indice_doblar_derecha] = self.right_points_up[0]
+                self.indice_doblar_derecha += 1
 
-            # Display the resulting frame
-            cv2.imshow('Frame', frame_left)
-            cv2.imshow('Frame2', frame_right)
-            # Press Q on keyboard to  exit
-            if cv2.waitKey(25) & 0xFF == ord('q'):  # 25fps
+                if (self.indice_doblar_izquierda is 10):
+                    self.indice_doblar_izquierda = 0
+                self.ultimas_posiciones_izquierda[self.indice_doblar_izquierda] = self.left_points_up[0]
+                self.indice_doblar_izquierda += 1
+
+                
+                if self.activar_linea_vertical:
+                    cv2.line(frameProcesado,(last,0),(last,320),(255,255,255),2)
+
+                # Grid lines at these intervals (in pixels)
+                # dx and dy can be different
+                dx, dy = 40,40
+                # Custom (rgb) grid color
+                grid_color = [255,0,0]# [0,0,0]
+                # Modify the image to include the grid
+                frameProcesado[:,::dy,:] = grid_color
+                frameProcesado[::dx,:,:] = grid_color
+
+                # Display the resulting frame
+                cv2.imshow('frameResulting', frameProcesado)
+
+                # Press Q on keyboard to  exit
+                key = cv2.waitKey(10)
+                if key == ord('q'):  # 25fps
+                    break
+                elif key == ord('k'):
+                    self.activar_doblar_derecha = True
+            
+            else: # Break the loop
                 break
-        # Break the loop
-        else:
-            break
 
-    # When everything done, release the video capture object
-    cap.release()
-
-    # Closes all the frames
-    cv2.destroyAllWindows()
+        # When everything done, release the video capture object
+        self.cap.release()
+        # Closes all the frames
+        cv2.destroyAllWindows()
 
 def qr_reader():
 
@@ -149,516 +274,11 @@ def qr_reader():
         cv2.putText(img, text, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         print("[INFO] found {} barcode {}".format(barcodeType, barcodeData))
     cv2.imwrite("new_img.jpg", img)
-
-def line_keeping_grid_v1():
-    # Create a VideoCapture object and read from input file
-    # If the input is the camera, pass 0 instead of the video file name
-    cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
-
-    lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
-    upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
-    count=0
-    # Check if camera opened successfully
-    if not cap.isOpened():
-        print("Error opening video stream or file")
-
-    # Read until video is completed
-    while cap.isOpened():
-        # Capture frame-by-frame
-        ret, frame = cap.read()
-
-        if ret:
-
-            frame = cv2.flip(frame, flipCode=-1)
-            #Defino parametros HLS o HSV para detectar solo lineas negras 
-            lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
-            upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
-            #Divido la imagen en 2 frames distintos (derecha e izquierda) para detectar una sola linea por frame
-            # width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-            # height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
-            fps =  cap.get(cv2.CAP_PROP_FPS)
-            width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-            height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
-            frame=cv2.flip(frame, flipCode=-1)
-            frame = frame[0:int(height*0.5),0:int(width)]
-
-
-            # print(int(width))    #640 --->32
-            # print(int(height*0.5))   #240 --->12
-            # 32*12= 384 bloques
-            column=0
-            row=0
-            frameResulting=frame
-
-            #Aplico filtro de color con los parametros ya definidos
-            # hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS) #BRG2HLS
-            hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #BRG2HLS
-            # cv2.imshow('framefilterHSV', hsv_right)
-            mask_right = cv2.inRange(frame, lower_black, upper_black)
-            res_right = cv2.bitwise_and(frame, frame, mask=mask_right)
-            # cv2.imshow('framefilter', res_right)
-
-            #Aplico filtro pasa bajos y deteccion de lineas por Canny
-            '''
-            kernel = np.ones((3,3), np.uint8)
-            frame_e = cv2.erode(frame, kernel, iterations=1)
-            gray_right = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY) 
-            (thresh, bw_right) = cv2.threshold(gray_right, 40, 255, cv2.THRESH_BINARY)
-            #dif_gray_right = cv2.GaussianBlur(bw_right, (1, 1), 0) #(mask, (5, 5), 0)
-            cv2.imshow('framefilterdif', frame_e)
-            canny_right = cv2.Canny(bw_right, 25, 175) # 25, 175)
-            cv2.imshow('framefilter', canny_right)
-            '''
-            #Umbral Dinamico
-            kernel = np.ones((3,3), np.uint8)
-            frame_e = cv2.erode(frame, kernel, iterations=1)
-            gray = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY)
-            gray = cv2.GaussianBlur(gray, (3, 3), 0)
-            gray = cv2.medianBlur(gray, 5)
-            dst2 = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 9, 5)
-            cv2.imshow('framefilterdif', dst2)
-            dif_gray_right = cv2.GaussianBlur(dst2, (11, 11), 0) #(mask, (5, 5), 0)
-            #cv2.imshow('framefilterdif', frame_e)
-            canny_right = cv2.Canny(dif_gray_right, 25, 175) # 25, 175)
-            kernel = np.ones((7,7), np.uint8)
-            canny_right = cv2.morphologyEx(canny_right, cv2.MORPH_CLOSE, kernel)
-            kernel = np.ones((3,3), np.uint8)
-            canny_right = cv2.erode(canny_right, kernel, iterations=1)
-            cv2.imshow('framefilter', canny_right)
             
-            # list = []
-            '''Recorre de abajo para arriba, de izquierda a derecha'''
-            while row < 6:
-                if column < 16:
-
-                    cannyCut=canny_right[(200-row*40):(240-row*40),(40*column):(40+40*column)]
-                    frameCut=frame[(200-row*40):(240-row*40),(40*column):(40+40*column)]
-
-
-                    '''Aca procesamos cada frameCut'''
-                    try:
-
-                        # frameCut = canny_right
-                        ## Aplico Transformada de Hough
-                        lines_right = cv2.HoughLinesP(cannyCut, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
-                        # Draw lines on the image
-                        if lines_right is not None:
-                            cant_lineas=len(lines_right)
-                            print(cant_lineas)
-                            
-                            if cant_lineas>100: #11
-                                #print('Se detecto una curva')
-                                frameCut[:,:,2] = frameCut[:,:,2] + 50
-                                #frameCut[:,:,0] = 0
-                            else:
-                                #print('Se detecto una linea')
-                            
-                                x1prom=0
-                                x2prom=0
-                                y1prom=0
-                                y2prom=0
-                                cant=0
-
-                                righty_sum=0
-                                lefty_sum=0
-                                counter=0
-                                x1m=0
-                                for line in lines_right: #for line in lines:
-                                    x1, y1, x2, y2 = line[0]
-                                    '''
-                                    if(x1>x1m):
-                                        x1m=x1
-                                        right_points = [(x1,y1), (x2,y2)]
-                                        '''
-                                    #x1m=x1
-                                    #right_points = [(x1,y1), (x2,y2)]  
-                                    cv2.line(frameCut,(x1,y1),(x2,y2),(0,0,255),2)
-                                    #cv2.line(frameCut,(frameCut.shape[1]-1,x1),(0,y1),255,2)
-                                '''
-                                [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
-                                
-                                # Now find two extreme points on the line to draw line
-                                lefty = int((-x*vy/vx) + y)
-                                righty = int(((frameCut.shape[1]-x)*vy/vx)+y)
-
-                                    #Finally draw the line
-                                
-                                if (abs(vy/vx) > 1) & (abs(vy/vx) < 30) :
-                                    righty_sum+=righty
-                                    lefty_sum+=lefty
-                                    counter+=1
-                                '''
-                                '''
-                                if (counter!=0) & (righty_sum!=0) & (lefty_sum!=0):
-                                    righty=righty_sum//counter
-                                    lefty=lefty_sum//counter
-                                    cv2.line(frameCut,(frameCut.shape[1]-1,righty),(0,lefty),255,2)
-                                
-                                cv2.line(frameCut,(frameCut.shape[1]-1,righty),(0,lefty),255,2)
-                                    # print(frameCut.shape[1]-1)
-                                    '''
-                                frameCut[:,:,0] = frameCut[:,:,0]+50
-                        else:
-                            frameCut[:,:,1] = frameCut[:,:,1] + 50        
-
-                    except Exception as e:
-                        print(e)
-
-                    '''Aca terminamos de procesar cada frameCut'''
-
-                    for x in range(40): #filas
-                        for j in range(40): #columnas
-                            # print(frameCut[x][j])
-                            frameResulting[200-row*40+x][0+40*column+j] = frameCut[x][j]
-                    column+=1
-                    # list.append(frameCut)
-                elif column == 16:
-                    column=0
-                    row+=1
-            '''     
-            if (frame == frameResulting).all(): #Esto es para verificar que el frame original sea igual al reconstruido
-                print ("Excelente!")
-                '''
-            # frameCut=frame[(1):(2),(1):(2)]
-            # print("hola0", frame[1][1])
-            # print("hola00", frame[239][639])
-            # print("hola1", frameCut[0][0])
-            # # print("hola2", list[383])
-            # cv2.imshow('frameCut', frameCut)
-
-            # Grid lines at these intervals (in pixels)
-            # dx and dy can be different
-            dx, dy = 40,40
-            # Custom (rgb) grid color
-            grid_color = [255,0,0]# [0,0,0]
-            # Modify the image to include the grid
-            frameResulting[:,::dy,:] = grid_color
-            frameResulting[::dx,:,:] = grid_color
-
-            cv2.line(frameResulting,(0,140),(640,140),(255,255,255),2)
-            # Display the resulting frame
-            cv2.imshow('frameResulting', frameResulting)
-
-            # Press Q on keyboard to  exit
-            if cv2.waitKey(25) & 0xFF == ord('q'):  # 25fps
-                break
-        # Break the loop
-        else:
-            break
-
-    # When everything done, release the video capture object
-    cap.release()
-
-    # Closes all the frames
-    cv2.destroyAllWindows()
-
-def line_keeping_grid_v2():
-    # Create a VideoCapture object and read from input file
-    # If the input is the camera, pass 0 instead of the video file name
-
-    cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
-
-    lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
-    upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
-    count=0
-    bocacalle=0
-    right_points_up_arr = np.zeros(10)
-    left_points_up_arr = np.zeros(10)
-    right_points_up_med = 0
-    left_points_up_med = 0
-    # Check if camera opened successfully
-    if not cap.isOpened():
-        print("Error opening video stream or file")
-
-    # Array para almacenar las ultimas 10 posiciones del vehiculo
-    ultimas_posiciones = np.zeros(10)
-    indice_ultima_posicion = 0
-    activar_linea_vertical = False
-    ultimas_posiciones_derecha = np.zeros(10)
-    indice_doblar_derecha = 0
-    activar_doblar_derecha = False
-    ultimas_posiciones_izquierda = np.zeros(10)
-    indice_doblar_izquierda = 0
-    activar_doblar_izquierda = False
-
-    indice_ultima_posicion_2 = 0
-    # Read until video is completed
-    while cap.isOpened():
-        # Capture frame-by-frame
-        ret, frame = cap.read()
-
-        if ret:
-            right_points_up = np.array([0, 0])
-            left_points_up = np.array([0, 0])
-            right_points_up_2 = np.array([0, 0])
-            left_points_up_2 = np.array([0, 0])
-
-            frame = cv2.flip(frame, flipCode=-1)
-            #Defino parametros HLS o HSV para detectar solo lineas negras 
-            lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
-            upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
-            #Divido la imagen en 2 frames distintos (derecha e izquierda) para detectar una sola linea por frame
-            # width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-            # height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
-            fps =  cap.get(cv2.CAP_PROP_FPS)
-            width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-            height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT )
-            frame=cv2.flip(frame, flipCode=-1)
-            frame = frame[0:int(height*0.5),0:int(width)]
-
-
-            # print(int(width))    #640 --->32
-            # print(int(height*0.5))   #240 --->12
-            # 32*12= 384 bloques
-            column=0
-            row=0
-            frameResulting=frame
-
-            #Aplico filtro de color con los parametros ya definidos
-            # hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS) #BRG2HLS
-            hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #BRG2HLS
-            # cv2.imshow('framefilterHSV', hsv_right)
-            mask_right = cv2.inRange(frame, lower_black, upper_black)
-            res_right = cv2.bitwise_and(frame, frame, mask=mask_right)
-            # cv2.imshow('framefilter', res_right)
-
-            #Aplico filtro pasa bajos y deteccion de lineas por Canny
-            '''
-            kernel = np.ones((3,3), np.uint8)
-            frame_e = cv2.erode(frame, kernel, iterations=1)
-            gray_right = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY) 
-            (thresh, bw_right) = cv2.threshold(gray_right, 40, 255, cv2.THRESH_BINARY)
-            #dif_gray_right = cv2.GaussianBlur(bw_right, (1, 1), 0) #(mask, (5, 5), 0)
-            cv2.imshow('framefilterdif', frame_e)
-            canny_right = cv2.Canny(bw_right, 25, 175) # 25, 175)
-            cv2.imshow('framefilter', canny_right)
-            '''
-            #Umbral Dinamico
-            kernel = np.ones((3,3), np.uint8)
-            frame_e = cv2.erode(frame, kernel, iterations=1)
-            gray = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY)
-            gray = cv2.GaussianBlur(gray, (3, 3), 0)
-            gray = cv2.medianBlur(gray, 5)
-            dst2 = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 9, 5)
-            cv2.imshow('framefilterdif', dst2)
-            dif_gray_right = cv2.GaussianBlur(dst2, (11, 11), 0) #(mask, (5, 5), 0)
-            #cv2.imshow('framefilterdif', frame_e)
-            canny_right = cv2.Canny(dif_gray_right, 25, 175) # 25, 175)
-            kernel = np.ones((7,7), np.uint8)
-            canny_right = cv2.morphologyEx(canny_right, cv2.MORPH_CLOSE, kernel)
-            kernel = np.ones((3,3), np.uint8)
-            canny_right = cv2.erode(canny_right, kernel, iterations=1)
-            cv2.imshow('framefilter', canny_right)
-            
-            # list = []
-            '''Recorre de abajo para arriba, de izquierda a derecha'''
-            while row < 6:
-                if column < 16:
-
-                    cannyCut=canny_right[(200-row*40):(240-row*40),(40*column):(40+40*column)]
-                    frameCut=frame[(200-row*40):(240-row*40),(40*column):(40+40*column)]
-
-                    if row == 2 or row == 5:
-                        '''Aca procesamos cada frameCut'''
-                        try:
-
-                            # frameCut = canny_right
-                            ## Aplico Transformada de Hough
-                            lines_right = cv2.HoughLinesP(cannyCut, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
-                            if row==2:
-                                lines_right_row2 = lines_right;
-                            # Draw lines on the image
-                            if lines_right is not None:
-                                cant_lineas=len(lines_right)
-                                #print(cant_lineas)
-                                
-                                if cant_lineas>100: #11
-                                    #print('Se detecto una curva')
-                                    frameCut[:,:,2] = frameCut[:,:,2] + 50
-                                    #frameCut[:,:,0] = 0
-                                else:
-                                    #print('Se detecto una linea')
-                                
-                                    x1prom=0
-                                    x2prom=0
-                                    y1prom=0
-                                    y2prom=0
-                                    cant=0
-
-                                    righty_sum=0
-                                    lefty_sum=0
-                                    counter=0
-                                    x1m=640
-                                    x1M=0
-                                    x1M_2=0
-                                    right_points_up
-                                    columnm=16
-                                    for line in lines_right: #for line in lines:
-                                        x1, y1, x2, y2 = line[0]
-                                        
-                                        if(x1>x1M and row==2):
-                                            x1M=x1
-                                            right_points_up = [x1+40*column, y1+40*(5-row)]
-                                            right_points_down = [x2, y2]
-                                        if(column<7and row==2):
-                                            # print(x1+40*column)
-                                            left_points_up = [x1+40*column, y1+40*(5-row)]
-                                            left_points_down = [x2, y2]
-                                        if(x1>x1M_2 and row==5):
-                                            x1M_2=x1
-                                            right_points_up_2 = [x1+40*column, y1+40*(5-row)]
-                                            right_points_down_2 = [x2, y2]
-                                        if(column<7and row==5):
-                                            # print(x1+40*column)
-                                            left_points_up_2 = [x1+40*column, y1+40*(5-row)]
-                                            left_points_down_2 = [x2, y2]    
-                                        #x1m=x1
-                                        #right_points = [(x1,y1), (x2,y2)]  
-                                        cv2.line(frameCut,(x1,y1),(x2,y2),(0,0,255),2)
-                                        #cv2.line(frameCut,(frameCut.shape[1]-1,x1),(0,y1),255,2)
-                                    '''
-                                    [vx,vy,x,y] = cv2.fitLine(np.array(right_points, dtype=np.int32), cv2.DIST_L2, 0, 0.01, 0.01)
-                                    
-                                    # Now find two extreme points on the line to draw line
-                                    lefty = int((-x*vy/vx) + y)
-                                    righty = int(((frameCut.shape[1]-x)*vy/vx)+y)
-
-                                        #Finally draw the line
-                                    
-                                    if (abs(vy/vx) > 1) & (abs(vy/vx) < 30) :
-                                        righty_sum+=righty
-                                        lefty_sum+=lefty
-                                        counter+=1
-                                    '''
-                                    '''
-                                    if (counter!=0) & (righty_sum!=0) & (lefty_sum!=0):
-                                        righty=righty_sum//counter
-                                        lefty=lefty_sum//counter
-                                        cv2.line(frameCut,(frameCut.shape[1]-1,righty),(0,lefty),255,2)
-                                    
-                                    cv2.line(frameCut,(frameCut.shape[1]-1,righty),(0,lefty),255,2)
-                                        # print(frameCut.shape[1]-1)
-                                        '''
-                                    frameCut[:,:,0] = frameCut[:,:,0]+50
-                            else:
-                                frameCut[:,:,1] = frameCut[:,:,1] + 50        
-
-                        except Exception as e:
-                            print(e)
-
-                        '''Aca terminamos de procesar cada frameCut'''
-
-                    # for x in range(40): #filas
-                    #     for j in range(40): #columnas
-                    #         # print(frameCut[x][j])
-                    #         frameResulting[200-row*40+x][0+40*column+j] = frameCut[x][j]
-                    column+=1
-                    # list.append(frameCut)
-                elif column == 16:
-                    column=0
-                    row+=1
-            '''     
-            if (frame == frameResulting).all(): #Esto es para verificar que el frame original sea igual al reconstruido
-                print ("Excelente!")
-                '''
-            # frameCut=frame[(1):(2),(1):(2)]
-            # print("hola0", frame[1][1])
-            # print("hola00", frame[239][639])
-            # print("hola1", frameCut[0][0])
-            # # print("hola2", list[383])
-            # cv2.imshow('frameCut', frameCut)
-
-            # Grid lines at these intervals (in pixels)
-            # dx and dy can be different
-            dx, dy = 40,40
-            # Custom (rgb) grid color
-            grid_color = [255,0,0]# [0,0,0]
-            # Modify the image to include the grid
-            frameResulting[:,::dy,:] = grid_color
-            frameResulting[::dx,:,:] = grid_color
-
-            #cv2.line(frameResulting,(0,140),(640,140),(255,255,255),2)
-
-
-            if activar_doblar_derecha:
-                if (not (statistics.median(ultimas_posiciones_derecha)*0.8 <= right_points_up[0] <= 
-                statistics.median(ultimas_posiciones_derecha)*1.2)) and (statistics.median(ultimas_posiciones_izquierda)*0.8 <= 
-                left_points_up[0] <= statistics.median(ultimas_posiciones_izquierda)*1.2):
-                    activar_linea_vertical = True
-                    activar_doblar_derecha = False
-                    print("hola")
-                    ultimas_posiciones_final = ultimas_posiciones
-                    last = int(statistics.median(ultimas_posiciones_final))
-
-            if (indice_ultima_posicion is 10):
-                indice_ultima_posicion = 0
-            ultimas_posiciones[indice_ultima_posicion] = (left_points_up[0]+right_points_up[0])/2
-            indice_ultima_posicion += 1
-
-            if (indice_doblar_derecha is 10):
-                indice_doblar_derecha = 0
-            ultimas_posiciones_derecha[indice_doblar_derecha] = right_points_up[0]
-            indice_doblar_derecha += 1
-
-            if (indice_doblar_izquierda is 10):
-                indice_doblar_izquierda = 0
-            ultimas_posiciones_izquierda[indice_doblar_izquierda] = left_points_up[0]
-            indice_doblar_izquierda += 1
-
-            if bocacalle==1:
-                cv2.line(frameResulting,(left_points_up_last,140),(right_points_up_last,140),(0,255,0),2)
-            else:
-                cv2.line(frameResulting,(left_points_up[0],140),(right_points_up[0],140),(255,255,255),2)
-            
-            cv2.line(frameResulting,(left_points_up_2[0],20),(right_points_up_2[0],20),(255,255,255),2)
-            dist_line_down = right_points_up[0] - left_points_up[0]
-            dist_line_up = right_points_up_2[0] - left_points_up_2[0]
-                
-            
-            if ((dist_line_down > 200)): #En promedio 170 # or dist_line_down < 150
-                if bocacalle == 0:
-                    right_points_up_last = int(statistics.median(right_points_up_arr))
-                    left_points_up_last = int(statistics.median(left_points_up_arr))
-                bocacalle=1
-            else:
-                if (indice_ultima_posicion_2 is 10):
-                    indice_ultima_posicion_2 = 0
-                right_points_up_arr[indice_ultima_posicion_2] = right_points_up[0]
-                left_points_up_arr[indice_ultima_posicion_2] = left_points_up[0]
-                right_points_up_med = int(statistics.median(right_points_up_arr))
-                left_points_up_med = int(statistics.median(left_points_up_arr))
-                indice_ultima_posicion_2 += 1
-                if ((right_points_up_med*0.9 < right_points_up[0] < right_points_up_med*1.1) and (left_points_up_med*0.9 < left_points_up[0] < left_points_up_med*1.1)):
-                    bocacalle=0
-                
-            print(bocacalle)
-            #print(dist_line_down)   
-            if activar_linea_vertical:
-                cv2.line(frameResulting,(last,0),(last,320),(255,255,255),2)
-
-            # Display the resulting frame
-            cv2.imshow('frameResulting', frameResulting)
-
-            # Press Q on keyboard to  exit
-            key = cv2.waitKey(10)
-            if key == ord('q'):  # 25fps
-                break
-            elif key == ord('k'):
-                activar_doblar_derecha = True
-        # Break the loop
-        else:
-            break
-
-    # When everything done, release the video capture object
-    cap.release()
-
-    # Closes all the frames
-    cv2.destroyAllWindows()
-
 if __name__ == "__main__":
-    # line_keeping()
     # qr_reader()
     # Image = cv2.imread('airplane.jpeg')
     # print(Image)
     # predict_cifar10(Image)
-    line_keeping_grid_v2()
+    seguidorLineas = SeguimientoLineas()
+    seguidorLineas.run()
