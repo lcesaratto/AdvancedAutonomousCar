@@ -309,7 +309,8 @@ class SeguimientoLineas (object):
                         self.cartelDetectado = False
                         self.dentroDeBocacalle = False
                         self.filasDeseadas = [2]
-                else:
+                else: 
+                    # Aca no se detecto ningun cartel y estoy pendiente a la espera de una curva a la derecha o izquierda
                     self._detectarCurvaDerecha()
 
                 self._calcularDistanciasLineaRecta()
