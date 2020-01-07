@@ -20,6 +20,7 @@ class SeguimientoLineas (object):
         self.distanciaDerecha_med = 0
         self.indice_ultima_posicion_3 = 0
         self.last = 0
+        self.up_point = np.array([0,0])
         # Variables y banderas utilizadas cuando se detecta la bocacalle
         self.bocacalleDetectada=False
         self.right_points_up_arr = np.zeros(10)
@@ -45,7 +46,8 @@ class SeguimientoLineas (object):
     def _abrirCamara (self):
         # Create a VideoCapture object and read from input file
         # If the input is the camera, pass 0 instead of the video file name
-        cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
+        cap = cv2.VideoCapture('Videos/20200107_163552.mp4')
+        # cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
         # Check if camera opened successfully
         if not cap.isOpened():
             print("Error opening video stream or file")
@@ -122,10 +124,11 @@ class SeguimientoLineas (object):
                 # print(cant_lineas)
                 
                 if cant_lineas>100: # print('Se detecto una curva')
-                    frameCut[:,:,2] = frameCut[:,:,2] + 50
+                    frameCut[:,:,2] = frameCut[:,:,2] + 30
                 else: # print('Se detecto una linea')
                     x1M=0
                     x1M_2=0
+                    y1M=0
 
 
                     for line in lines:
@@ -146,16 +149,24 @@ class SeguimientoLineas (object):
                         if(columna<7 and fila==5):
                             # print(x1+40*column)
                             self.left_points_up_2 = [x1+40*columna, y1+40*(5-fila)]
-                            self.left_points_down_2 = [x2, y2]    
+                            self.left_points_down_2 = [x2, y2] 
+
+                        # Guardamos la posicion del punto superior (frente al vehiculo)
+                        if self.dentroCurvaDerecha:
+                            if (columna is int(self.last/40)) and y1>y1M:
+                            # if (self.last*0.7< (x1+40*columna) < self.last*1.3) and y1>y1M:
+                                y1M=y1
+                                self.up_point = [self.last,y1+40*(5-fila)]
+                               
                         # x1m=x1
                         # right_points = [(x1,y1), (x2,y2)]
 
                         cv2.line(frameCut,(x1,y1),(x2,y2),(0,0,255),2)
                         # cv2.line(frameCut,(frameCut.shape[1]-1,x1),(0,y1),255,2)
 
-                    frameCut[:,:,0] = frameCut[:,:,0]+50
+                    frameCut[:,:,0] = frameCut[:,:,0]+30
             else:
-                frameCut[:,:,1] = frameCut[:,:,1] + 50        
+                frameCut[:,:,1] = frameCut[:,:,1] + 30        
 
         except Exception as e:
             print(e)
@@ -209,7 +220,7 @@ class SeguimientoLineas (object):
 
         # cv2.line(self.frameProcesado,(int(distanciaDerecha+320),0),(int(distanciaDerecha+320),240),(0,0,255),2)
 
-        if distanciaDerecha > 130: # Condicion de entrada a la curva (INSTANTANEA)
+        if distanciaDerecha > self.distanciaDerecha_med*1.3: # 130: # Condicion de entrada a la curva (INSTANTANEA)
             self.dentroCurvaDerecha = True
             self.last = int(statistics.median(self.ultimas_posiciones))
 
@@ -222,10 +233,10 @@ class SeguimientoLineas (object):
             self.columnasDeseadas = []
 
         if self.dentroCurvaDerecha:
+            print(self.up_point)
             cv2.line(self.frameProcesado,(self.last,0),(self.last,320),(255,255,255),2)
             self.columnasDeseadas = [int(self.last/40)]
             
-
     def _dibujarGrilla(self):
         # Grid lines at these intervals (in pixels)
         # dx and dy can be different
@@ -285,6 +296,8 @@ class SeguimientoLineas (object):
             if ret:
                 frameOriginalRecortado = self._prepararFrame(frameCompleto)
                 frameConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
+
+                cv2.imshow('frameParaProbar', frameConFiltro)
                 
                 self.frameProcesado = frameOriginalRecortado
                 for fila in self.filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
