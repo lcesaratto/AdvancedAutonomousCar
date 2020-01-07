@@ -242,23 +242,32 @@ class SeguimientoLineas (object):
         self.frameProcesado[::dx,:,:] = grid_color
 
     def _calcularDistanciasLineaRecta(self):
-        
-        DISTANCIA_A_MANTENER_IZQ = 116
-        DISTANCIA_A_MANTENER_DER = 58
 
-        distanciaIzquierda = (self.width/2) - self.left_points_up[0]
-        distanciaDerecha = self.right_points_up[0] - (self.width/2)
+        ubicacion_punto_central = (self.right_points_up[0] + self.left_points_up[0]) / 2
+        cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
+        cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
 
-        print("IZQUIERDA:   ", distanciaIzquierda, "    DERECHA:    ",distanciaDerecha)
+        distancia_al_centro = (self.width/2) - ubicacion_punto_central
+        if distancia_al_centro > 5:
+            self.accionATomar = [1, 0, 0, 0]
+        elif distancia_al_centro < -5:
+            self.accionATomar = [0, 1, 0, 0]
+        else:
+            self.accionATomar = [0, 0, 1, 0]
 
-        if DISTANCIA_A_MANTENER_IZQ*1.05 < distanciaIzquierda:
-            self.accionATomar = [1, 0, 1, 0]
-        elif DISTANCIA_A_MANTENER_IZQ > distanciaIzquierda:
-            self.accionATomar = [0, 0, 0, 0]
-        if DISTANCIA_A_MANTENER_DER*1.05 < distanciaDerecha:
-            self.accionATomar = [0, 1, 1, 0]
-        elif DISTANCIA_A_MANTENER_DER > distanciaDerecha:
-            self.accionATomar = [0, 0, 0, 0]
+        # DISTANCIA_A_MANTENER_IZQ = 116
+        # DISTANCIA_A_MANTENER_DER = 58
+        # distanciaIzquierda = (self.width/2) - self.left_points_up[0]
+        # distanciaDerecha = self.right_points_up[0] - (self.width/2)
+        # print("IZQUIERDA:   ", distanciaIzquierda, "    DERECHA:    ",distanciaDerecha)
+        # if DISTANCIA_A_MANTENER_IZQ*1.05 < distanciaIzquierda:
+        #     self.accionATomar = [1, 0, 1, 0]
+        # elif DISTANCIA_A_MANTENER_IZQ > distanciaIzquierda:
+        #     self.accionATomar = [0, 0, 0, 0]
+        # if DISTANCIA_A_MANTENER_DER*1.05 < distanciaDerecha:
+        #     self.accionATomar = [0, 1, 1, 0]
+        # elif DISTANCIA_A_MANTENER_DER > distanciaDerecha:
+        #     self.accionATomar = [0, 0, 0, 0]
 
     def _moverVehiculo(self):
         if self.accionATomar[0] == 1:
