@@ -9,45 +9,38 @@ class SeguimientoLineas (object):
     def __init__(self):
         self.cap = self._abrirCamara()
         self.fps, self.width, self.height = self._obtenerParametrosFrame()
-
+        # Frame con el que trabajan todos los metodos
         self.frameProcesado = []
-
+        # Especificamos mediante los siguientes array que porciones de frame procesar
         self.filasDeseadas = [2]
         self.columnasDeseadas = []
-
-        self.ingresoCurva = True
-
-        # self.count=0
+        # Variables y banderas utulizadas cuando se detecta la curva derecha
+        self.dentroCurvaDerecha = False
+        self.distanciaDerecha_arr = np.zeros(10)
+        self.distanciaDerecha_med = 0
+        self.indice_ultima_posicion_3 = 0
+        self.last = 0
+        # Variables y banderas utilizadas cuando se detecta la bocacalle
         self.bocacalleDetectada=False
         self.right_points_up_arr = np.zeros(10)
         self.left_points_up_arr = np.zeros(10)
         self.right_points_up_med = 0
         self.left_points_up_med = 0
-        # # Array para almacenar las ultimas 10 posiciones del vehiculo
-        self.ultimas_posiciones = np.zeros(10)
-        self.indice_ultima_posicion = 0
-
-        self.activar_linea_vertical = False
-        self.ultimas_posiciones_derecha = np.zeros(10)
-        self.indice_doblar_derecha = 0
-        self.cartelDetectado = False
-        self.ultimas_posiciones_izquierda = np.zeros(10)
-        self.indice_doblar_izquierda = 0
-        self.activar_doblar_izquierda = False
-
-        self.indice_ultima_posicion_2 = 0
-
-        self.right_points_up = np.array([0, 0])
-        self.left_points_up = np.array([0, 0])
-        self.right_points_up_2 = np.array([0, 0])
-        self.left_points_up_2 = np.array([0, 0])
-
         self.left_points_up_last = np.array([0, 0])
         self.right_points_up_last = np.array([0, 0])
         self.dentroDeBocacalle = False
-        self.last = 0
-
-        self.accionATomar = [0, 0, 0, 0]
+        self.ultimas_posiciones = np.zeros(10) # Array para almacenar las ultimas 10 posiciones del vehiculo
+        self.indice_ultima_posicion = 0
+        self.indice_ultima_posicion_2 = 0
+        # Cuando se detecta el cartel o se pulsa la letra K
+        self.cartelDetectado = False
+        # Ubicacion de los puntos a las lineas laterales
+        self.right_points_up = np.array([0, 0]) # Para la fila 2
+        self.left_points_up = np.array([0, 0])
+        self.right_points_up_2 = np.array([0, 0]) # Para la fila 5
+        self.left_points_up_2 = np.array([0, 0])
+        # Array que determina la posicion hacia donde ir
+        self.accionATomar = [0, 0, 0, 0] 
         
     def _abrirCamara (self):
         # Create a VideoCapture object and read from input file
@@ -204,35 +197,34 @@ class SeguimientoLineas (object):
                 self.bocacalleDetectada=False
 
     def _detectarCurvaDerecha(self):
-        if self.ingresoCurva:
-            if (not (statistics.median(self.ultimas_posiciones_derecha)*0.8 <= self.right_points_up[0] <= 
-            statistics.median(self.ultimas_posiciones_derecha)*1.2)) and (statistics.median(self.ultimas_posiciones_izquierda)*0.8 <= 
-            self.left_points_up[0] <= statistics.median(self.ultimas_posiciones_izquierda)*1.2):
-                self.activar_linea_vertical = True
-                self.ingresoCurva = False
-                self.columnasDeseadas = [7,8]
-                # self.cartelDetectado = False
-                self.ultimas_posiciones_final = self.ultimas_posiciones
-                self.last = int(statistics.median(self.ultimas_posiciones_final))
+        #print(self.dentroCurvaDerecha)
+        distanciaDerecha = self.right_points_up[0] - (self.width/2)
 
-        if (self.indice_ultima_posicion is 10):
-            self.indice_ultima_posicion = 0
-        self.ultimas_posiciones[self.indice_ultima_posicion] = (self.left_points_up[0]+self.right_points_up[0])/2
-        self.indice_ultima_posicion += 1
+        if (self.indice_ultima_posicion_3 is 10):
+            self.indice_ultima_posicion_3 = 0
+        self.distanciaDerecha_arr[self.indice_ultima_posicion_3] = distanciaDerecha
+        self.indice_ultima_posicion_3 += 1
 
-        if (self.indice_doblar_derecha is 10):
-            self.indice_doblar_derecha = 0
-        self.ultimas_posiciones_derecha[self.indice_doblar_derecha] = self.right_points_up[0]
-        self.indice_doblar_derecha += 1
+        self.distanciaDerecha_med = int(statistics.median(self.distanciaDerecha_arr))
 
-        if (self.indice_doblar_izquierda is 10):
-            self.indice_doblar_izquierda = 0
-        self.ultimas_posiciones_izquierda[self.indice_doblar_izquierda] = self.left_points_up[0]
-        self.indice_doblar_izquierda += 1
+        # cv2.line(self.frameProcesado,(int(distanciaDerecha+320),0),(int(distanciaDerecha+320),240),(0,0,255),2)
 
-        
-        if self.activar_linea_vertical:
+        if distanciaDerecha > 130: # Condicion de entrada a la curva (INSTANTANEA)
+            self.dentroCurvaDerecha = True
+            self.last = int(statistics.median(self.ultimas_posiciones))
+
+        elif self.distanciaDerecha_med*0.8 < distanciaDerecha < self.distanciaDerecha_med*1.2: #80 < self.distanciaDerecha_med < 100# Condicion de salida de la curva (RETRASADA)
+            if (self.indice_ultima_posicion is 10):
+                self.indice_ultima_posicion = 0
+            self.ultimas_posiciones[self.indice_ultima_posicion] = (self.left_points_up[0]+self.right_points_up[0])/2
+            self.indice_ultima_posicion += 1
+            self.dentroCurvaDerecha = False
+            self.columnasDeseadas = []
+
+        if self.dentroCurvaDerecha:
             cv2.line(self.frameProcesado,(self.last,0),(self.last,320),(255,255,255),2)
+            self.columnasDeseadas = [int(self.last/40)]
+            
 
     def _dibujarGrilla(self):
         # Grid lines at these intervals (in pixels)
@@ -253,8 +245,8 @@ class SeguimientoLineas (object):
         else:
             distancia_al_centro = (self.width/2) - ubicacion_punto_central
 
-        cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
-        cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
+        #cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
+        #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
         
         if distancia_al_centro > 5:
             self.accionATomar = [1, 0, 0, 0]
@@ -322,7 +314,7 @@ class SeguimientoLineas (object):
                     self._detectarCurvaDerecha()
 
                 self._calcularDistanciasLineaRecta()
-                self._moverVehiculo()
+                # self._moverVehiculo()
                     
                 self._dibujarGrilla()
 
