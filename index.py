@@ -189,6 +189,9 @@ class SeguimientoLineas (object):
                 self.right_points_up_last = self.right_points_up_med#int(statistics.median(self.right_points_up_arr))
                 self.left_points_up_last = self.left_points_up_med#int(statistics.median(self.left_points_up_arr))
             self.bocacalleDetectada=True
+            if dist_line_up < 200:
+                self.right_points_up_last = self.right_points_up_2[0]
+                self.left_points_up_last = self.left_points_up_2[0]
         else:
             if (self.indice_ultima_posicion_2 is 10):
                 self.indice_ultima_posicion_2 = 0
@@ -243,11 +246,16 @@ class SeguimientoLineas (object):
 
     def _calcularDistanciasLineaRecta(self):
 
-        ubicacion_punto_central = (self.right_points_up[0] + self.left_points_up[0]) / 2
+        ubicacion_punto_central = (self.right_points_up[0] + self.left_points_up[0]) / 2        
+        if self.dentroDeBocacalle:
+            ubicacion_punto_central = (self.right_points_up_last + self.left_points_up_last) / 2
+            distancia_al_centro = (self.width/2) - ubicacion_punto_central
+        else:
+            distancia_al_centro = (self.width/2) - ubicacion_punto_central
+
         cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
         cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
-
-        distancia_al_centro = (self.width/2) - ubicacion_punto_central
+        
         if distancia_al_centro > 5:
             self.accionATomar = [1, 0, 0, 0]
         elif distancia_al_centro < -5:
