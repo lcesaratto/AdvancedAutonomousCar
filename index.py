@@ -19,6 +19,7 @@ class SeguimientoLineas (object):
         self.distanciaDerecha_arr = np.zeros(10)
         self.distanciaDerecha_med = 0
         self.indice_ultima_posicion_3 = 0
+        self.array3_listo = False
         self.last = 0
         self.up_point = np.array([0,0])
         # Variables y banderas utilizadas cuando se detecta la bocacalle
@@ -46,8 +47,8 @@ class SeguimientoLineas (object):
     def _abrirCamara (self):
         # Create a VideoCapture object and read from input file
         # If the input is the camera, pass 0 instead of the video file name
-        cap = cv2.VideoCapture('Videos/20200107_163552.mp4')
-        # cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
+        #cap = cv2.VideoCapture('Videos/20200107_163552.mp4')
+        cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
         # Check if camera opened successfully
         if not cap.isOpened():
             print("Error opening video stream or file")
@@ -212,6 +213,7 @@ class SeguimientoLineas (object):
         distanciaDerecha = self.right_points_up[0] - (self.width/2)
 
         if (self.indice_ultima_posicion_3 is 10):
+            self.array3_listo = True
             self.indice_ultima_posicion_3 = 0
         self.distanciaDerecha_arr[self.indice_ultima_posicion_3] = distanciaDerecha
         self.indice_ultima_posicion_3 += 1
@@ -220,7 +222,7 @@ class SeguimientoLineas (object):
 
         # cv2.line(self.frameProcesado,(int(distanciaDerecha+320),0),(int(distanciaDerecha+320),240),(0,0,255),2)
 
-        if distanciaDerecha > self.distanciaDerecha_med*1.3: # 130: # Condicion de entrada a la curva (INSTANTANEA)
+        if distanciaDerecha > self.distanciaDerecha_med*1.3 and self.array3_listo == True: # 130: # Condicion de entrada a la curva (INSTANTANEA)
             self.dentroCurvaDerecha = True
             self.last = int(statistics.median(self.ultimas_posiciones))
 
@@ -229,6 +231,11 @@ class SeguimientoLineas (object):
                 self.indice_ultima_posicion = 0
             self.ultimas_posiciones[self.indice_ultima_posicion] = (self.left_points_up[0]+self.right_points_up[0])/2
             self.indice_ultima_posicion += 1
+
+            self.distanciaDerecha_arr = np.zeros(10)
+            self.indice_ultima_posicion_3 = 0
+            self.array3_listo = False
+
             self.dentroCurvaDerecha = False
             self.columnasDeseadas = []
 
