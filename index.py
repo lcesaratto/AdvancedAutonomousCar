@@ -42,7 +42,13 @@ class SeguimientoLineas (object):
         self.right_points_up_2 = np.array([0, 0]) # Para la fila 5
         self.left_points_up_2 = np.array([0, 0])
         # Array que determina la posicion hacia donde ir
-        self.accionATomar = [0, 0, 0, 0] 
+        self.accionATomar = [0, 0, 0, 0]
+
+
+        # Banderas de prueba
+        self.depositoDetectado = 3
+        self.depositoABuscar = 3
+        self.activarBuscarFramesLineaPunteada = False
         
     def _abrirCamara (self):
         # Create a VideoCapture object and read from input file
@@ -297,6 +303,11 @@ class SeguimientoLineas (object):
         if self.accionATomar[3] == 1:
             print("Ir hacia atras")
 
+    def _girarLineaPunteada(self):
+        self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+        self.filasDeseadas = [0,1,2,3,4,5]
+        self.activarBuscarFramesLineaPunteada = True
+
     def run (self):
         while self.cap.isOpened():
             ret, frameCompleto = self.cap.read()
@@ -320,15 +331,18 @@ class SeguimientoLineas (object):
                             self._reconstruirFrame(porcionFrameProcesado, fila, columna)
                 
                 if self.cartelDetectado:
-                    self.filasDeseadas = [2, 5]
-                    self._detectarBocacalle()
-                    # Aca se limpia la bandera bocacalleDetectada mediante otra bandera dentroDeBocacalle. NO CONFUNDIR
-                    if self.bocacalleDetectada:
-                        self.dentroDeBocacalle = True
-                    if (self.bocacalleDetectada == False and self.dentroDeBocacalle):
-                        self.cartelDetectado = False
-                        self.dentroDeBocacalle = False
-                        self.filasDeseadas = [2]
+                    if self.depositoDetectado is self.depositoABuscar:
+                        self._girarLineaPunteada()
+                    else:
+                        self.filasDeseadas = [2, 5]
+                        self._detectarBocacalle()
+                        # Aca se limpia la bandera bocacalleDetectada mediante otra bandera dentroDeBocacalle. NO CONFUNDIR
+                        if self.bocacalleDetectada:
+                            self.dentroDeBocacalle = True
+                        if (self.bocacalleDetectada == False and self.dentroDeBocacalle):
+                            self.cartelDetectado = False
+                            self.dentroDeBocacalle = False
+                            self.filasDeseadas = [2]
                 else: 
                     # Aca no se detecto ningun cartel y estoy pendiente a la espera de una curva a la derecha o izquierda
                     self._detectarCurvaDerecha()
