@@ -1,6 +1,0 @@
-imprimir maqueta a escala
-hacer nuevo video
-detectar todas las líneas correctamente
-sustraer el background
-calcular distancia a las líneas y corrección de trayectoria
-diferenciar entre líneas continuas y de trazos
