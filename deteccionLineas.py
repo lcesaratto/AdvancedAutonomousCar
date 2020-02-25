@@ -481,3 +481,7 @@ class VehiculoAutonomo (object):
         self.cap.release()
         # Closes all the frames
         cv2.destroyAllWindows()
+
+if __name__ == "__main__":
+    vehiculoAutonomo = VehiculoAutonomo()
+    vehiculoAutonomo.comenzar()
