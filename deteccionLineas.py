@@ -2,7 +2,6 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import statistics
-from detectorQR import qr_reader
 import time
 from pyzbar import pyzbar
 
@@ -46,8 +45,8 @@ class VehiculoAutonomo (object):
         self.accionATomar = [0, 0, 0, 0]
 
         # Banderas de prueba
-        self.depositoDetectado = 3
-        self.depositoABuscar = 3
+        self.depositoDetectado = -1
+        self.depositoABuscar = -1
         self.activarBuscarFramesLineaPunteada = False
 
         # Deteccion de objetos
@@ -59,14 +58,13 @@ class VehiculoAutonomo (object):
         self.output_layers = [self.layer_names[i[0] - 1] for i in self.net.getUnconnectedOutLayers()]
         self.colors = np.random.uniform(0, 255, size=(len(self.classes), 3))
         self.font = cv2.FONT_HERSHEY_PLAIN
+
+        # Contador de tiempo
+        self.tiempoDeEsperaInicial = -1
     
     def _leer_qr(self, frame):
-
         barcodes = pyzbar.decode(frame)
-
-        barcodeData = barcodes[0].data.decode("utf-8")
-
-        return barcodeData
+        return barcodes
 
     def _cargarModelo(self):
         return cv2.dnn.readNet("4class_yolov3-tiny_final.weights", "4class_yolov3-tiny.cfg")
@@ -136,8 +134,8 @@ class VehiculoAutonomo (object):
                 cv2.putText(frame, label, (x, y + 30), self.font, 3, color, 2)
 
             cv2.imshow('window-name',frame)
-            if cv2.waitKey(10) & 0xFF == ord('q'):
-                break
+            # if cv2.waitKey(10) & 0xFF == ord('q'):
+            #     break
             
         if not retornarBoxes and not retornarConfidence:
             return class_ids
@@ -152,7 +150,7 @@ class VehiculoAutonomo (object):
         # Create a VideoCapture object and read from input file
         # If the input is the camera, pass 0 instead of the video file name
         #cap = cv2.VideoCapture('Videos/20200107_163552.mp4')
-        cap = cv2.VideoCapture('Videos/20191012_213614.mp4')#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
+        cap = cv2.VideoCapture(0)#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
         # Check if camera opened successfully
         if not cap.isOpened():
             print("Error opening video stream or file")
@@ -410,55 +408,68 @@ class VehiculoAutonomo (object):
         while self.cap.isOpened():
             ret, frameCompleto = self.cap.read()
             if ret:
-                frameOriginalRecortado = self._prepararFrame(frameCompleto)
-                frameConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
 
-                cv2.imshow('frameParaProbar', frameConFiltro)
-                
-                self.frameProcesado = frameOriginalRecortado
-                for fila in self.filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
-                    for columna in range(16):
-                        porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameConFiltro, fila, columna)
-                        porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
-                        self._reconstruirFrame(porcionFrameProcesado, fila, columna)
-                for columna in self.columnasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
-                    for fila in range(6):
-                        if fila not in self.filasDeseadas:
+                if self.depositoABuscar == -1:
+                    cv2.imshow('buscandoQR', frameCompleto)
+                    cv2.waitKey(10)
+                    barcodes = self._leer_qr(frameCompleto)
+                    if barcodes:
+                        cv2.destroyWindow('buscandoQR')
+                        barcodeData = barcodes[0].data.decode("utf-8")
+                        self.depositoABuscar = 0
+                        self.tiempoDeEsperaInicial = time.time()
+
+                elif (time.time()-self.tiempoDeEsperaInicial) > 5 and self.tiempoDeEsperaInicial != -1:
+
+                    frameOriginalRecortado = self._prepararFrame(frameCompleto)
+                    frameConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
+
+                    cv2.imshow('frameParaProbar', frameConFiltro)
+                    
+                    self.frameProcesado = frameOriginalRecortado
+                    for fila in self.filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
+                        for columna in range(16):
                             porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameConFiltro, fila, columna)
                             porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
                             self._reconstruirFrame(porcionFrameProcesado, fila, columna)
-                
-                if self.cartelDetectado:
-                    if self.depositoDetectado is self.depositoABuscar:
-                        self._girarLineaPunteada()
-                    else:
-                        self.filasDeseadas = [2, 5]
-                        self._detectarBocacalle()
-                        # Aca se limpia la bandera bocacalleDetectada mediante otra bandera dentroDeBocacalle. NO CONFUNDIR
-                        if self.bocacalleDetectada:
-                            self.dentroDeBocacalle = True
-                        if (self.bocacalleDetectada == False and self.dentroDeBocacalle):
-                            self.cartelDetectado = False
-                            self.dentroDeBocacalle = False
-                            self.filasDeseadas = [2]
-                else: 
-                    # Aca no se detecto ningun cartel y estoy pendiente a la espera de una curva a la derecha o izquierda
-                    self._detectarCurvaDerecha()
-
-                self._calcularDistanciasLineaRecta()
-                # self._moverVehiculo()
+                    for columna in self.columnasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
+                        for fila in range(6):
+                            if fila not in self.filasDeseadas:
+                                porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameConFiltro, fila, columna)
+                                porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
+                                self._reconstruirFrame(porcionFrameProcesado, fila, columna)
                     
-                self._dibujarGrilla()
+                    if self.cartelDetectado:
+                        if self.depositoDetectado is self.depositoABuscar:
+                            self._girarLineaPunteada()
+                        else:
+                            self.filasDeseadas = [2, 5]
+                            self._detectarBocacalle()
+                            # Aca se limpia la bandera bocacalleDetectada mediante otra bandera dentroDeBocacalle. NO CONFUNDIR
+                            if self.bocacalleDetectada:
+                                self.dentroDeBocacalle = True
+                            if (self.bocacalleDetectada == False and self.dentroDeBocacalle):
+                                self.cartelDetectado = False
+                                self.dentroDeBocacalle = False
+                                self.filasDeseadas = [2]
+                    else: 
+                        # Aca no se detecto ningun cartel y estoy pendiente a la espera de una curva a la derecha o izquierda
+                        self._detectarCurvaDerecha()
 
-                # Display the resulting frame
-                cv2.imshow('frameResulting', self.frameProcesado)
+                    self._calcularDistanciasLineaRecta()
+                    # self._moverVehiculo()
+                        
+                    self._dibujarGrilla()
 
-                # Press Q on keyboard to  exit
-                key = cv2.waitKey(10)
-                if key == ord('q'):  # 25fps
-                    break
-                elif key == ord('k'): #Con esta tecla simulamos el cartel a detectar
-                    self.cartelDetectado = True
+                    # Display the resulting frame
+                    cv2.imshow('frameResulting', self.frameProcesado)
+
+                    # Press Q on keyboard to  exit
+                    key = cv2.waitKey(10)
+                    if key == ord('q'):  # 25fps
+                        break
+                    elif key == ord('k'): #Con esta tecla simulamos el cartel a detectar
+                        self.cartelDetectado = True
             
             else: # Break the loop
                 break
