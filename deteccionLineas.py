@@ -421,6 +421,9 @@ class VehiculoAutonomo (object):
 
                 elif (time.time()-self.tiempoDeEsperaInicial) > 5 and self.tiempoDeEsperaInicial != -1:
 
+                    class_ids = self._buscarObjetos(frameCompleto)
+                    print('Objetos detectados: ', class_ids)
+
                     frameOriginalRecortado = self._prepararFrame(frameCompleto)
                     frameConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
 
