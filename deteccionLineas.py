@@ -4,6 +4,41 @@ import matplotlib.pyplot as plt
 import statistics
 import time
 from pyzbar import pyzbar
+from threading import Thread
+
+class VideoCamera(object):
+    #320*240 original
+    def __init__(self):
+        self.cap = cv2.VideoCapture(0)
+        # initialize the frame and the variable used to indicate
+        # if the thread should be stopped
+        self.frame = None
+        self.stopped = False
+
+    def start(self):
+        # start the thread to read frames from the video stream
+        Thread(target=self.update, args=()).start()
+        return self
+
+    def update(self):
+        # keep looping infinitely until the thread is stopped
+        while self.cap.isOpened():
+            # grab the frame from the stream and clear the stream in
+            # preparation for the next frame
+            self.ret, self.frame = self.cap.read()
+            # if the thread indicator variable is set, stop the thread
+            # and resource camera resources
+            if self.stopped:
+                self.cap.release()
+                return
+
+    def read(self):
+        # return the frame most recently read
+        return self.ret, self.frame
+
+    def stop(self):
+        # indicate that the thread should be stopped
+        self.stopped = True
 
 class VehiculoAutonomo (object):
     def __init__(self):
@@ -65,6 +100,7 @@ class VehiculoAutonomo (object):
 
         #Deteccion de Color Rojo
         self.RojoDetectado = 0
+    
     
     def _leer_qr(self, frame):
         barcodes = pyzbar.decode(frame)
@@ -167,16 +203,19 @@ class VehiculoAutonomo (object):
         # Create a VideoCapture object and read from input file
         # If the input is the camera, pass 0 instead of the video file name
         #cap = cv2.VideoCapture('Videos/20200107_163552.mp4')
-        cap = cv2.VideoCapture(0)#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
+        #cap = cv2.VideoCapture(0)#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
+        cap = VideoCamera()
+        cap.start()
+        time.sleep(2)
         # Check if camera opened successfully
-        if not cap.isOpened():
-            print("Error opening video stream or file")
+        #if not cap.isOpened():
+        #    print("Error opening video stream or file")
         return cap
 
     def _obtenerParametrosFrame(self):
-        fps =  self.cap.get(cv2.CAP_PROP_FPS)
-        width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-        height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        fps =  30#self.cap.get(cv2.CAP_PROP_FPS)
+        width = 640#self.cap.get(cv2.CAP_PROP_FRAME_WIDTH )
+        height = 480#self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         return fps, width, height
 
     def _prepararFrame (self, frame):
@@ -422,10 +461,12 @@ class VehiculoAutonomo (object):
         self.activarBuscarFramesLineaPunteada = True
 
     def comenzar(self):
-        while self.cap.isOpened():
+        # while self.cap.isOpened():
+        #     ret, frameCompleto = self.cap.read()
+        #     if ret:
+        while True:
             ret, frameCompleto = self.cap.read()
             if ret:
-
                 if self.depositoABuscar == -1:
                     cv2.imshow('buscandoQR', frameCompleto)
                     cv2.waitKey(10)
@@ -508,7 +549,7 @@ class VehiculoAutonomo (object):
                 break
 
         # When everything done, release the video capture object
-        self.cap.release()
+        self.cap.stop()
         # Closes all the frames
         cv2.destroyAllWindows()
 
