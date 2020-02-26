@@ -66,10 +66,22 @@ class VehiculoAutonomo (object):
         #Deteccion de Color Rojo
         self.RojoDetectado = 0
     
-    
     def _leer_qr(self, frame):
         barcodes = pyzbar.decode(frame)
         return barcodes
+
+    def _detectarRojo(self,frame):
+        #Defino parametros HSV para detectar color rojo 
+        lower_red = np.array([170, 179, 0])
+        upper_red = np.array([255, 255, 255])
+
+        #Aplico filtro de color con los parametros ya definidos
+        hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
+        
+        #Proceso
+        if np.mean(mask_red) > 15:
+            self.RojoDetectado = 1
 
     def _cargarModelo(self):
         return cv2.dnn.readNet("4class_yolov3-tiny_final.weights", "4class_yolov3-tiny.cfg")
@@ -427,11 +439,13 @@ class VehiculoAutonomo (object):
                 elif (time.time()-self.tiempoDeEsperaInicial) > 5 and self.tiempoDeEsperaInicial != -1:
 
                     tiempoInicialFPS = time.time()
-                    if self.RojoDetectado is True:
+                    self._detectarRojo(frameCompleto)
+                    if self.RojoDetectado == 1:
                         class_ids = list(set(self._buscarObjetos(frameCompleto)))
                         print('Objetos detectados: ', class_ids)
-                        self.contadorFrames = 0
-
+                        if class_ids:
+                            self.RojoDetectado = 0
+                        
                     #if self.contadorFrames is 4:
                         # class_ids = list(set(self._buscarObjetos(frameCompleto)))
                         # print('Objetos detectados: ', class_ids)
