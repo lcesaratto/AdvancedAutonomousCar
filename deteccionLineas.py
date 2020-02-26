@@ -61,6 +61,11 @@ class VehiculoAutonomo (object):
 
         # Contador de tiempo
         self.tiempoDeEsperaInicial = -1
+        self.contadorFrames = 0
+
+        #Deteccion de Color Rojo
+        self.RojoDetectado = 0
+    
     
     def _leer_qr(self, frame):
         barcodes = pyzbar.decode(frame)
@@ -421,8 +426,18 @@ class VehiculoAutonomo (object):
 
                 elif (time.time()-self.tiempoDeEsperaInicial) > 5 and self.tiempoDeEsperaInicial != -1:
 
-                    class_ids = self._buscarObjetos(frameCompleto)
-                    print('Objetos detectados: ', class_ids)
+                    tiempoInicialFPS = time.time()
+                    if self.RojoDetectado is True:
+                        class_ids = list(set(self._buscarObjetos(frameCompleto)))
+                        print('Objetos detectados: ', class_ids)
+                        self.contadorFrames = 0
+
+                    #if self.contadorFrames is 4:
+                        # class_ids = list(set(self._buscarObjetos(frameCompleto)))
+                        # print('Objetos detectados: ', class_ids)
+                    #    self.contadorFrames = 0
+
+                    self.contadorFrames += 1
 
                     frameOriginalRecortado = self._prepararFrame(frameCompleto)
                     frameConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
@@ -473,7 +488,8 @@ class VehiculoAutonomo (object):
                         break
                     elif key == ord('k'): #Con esta tecla simulamos el cartel a detectar
                         self.cartelDetectado = True
-            
+
+                    print("FPS: ", (1/(time.time()-tiempoInicialFPS)))
             else: # Break the loop
                 break
 
