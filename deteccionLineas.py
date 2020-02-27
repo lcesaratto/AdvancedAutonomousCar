@@ -5,11 +5,12 @@ import statistics
 import time
 from pyzbar import pyzbar
 from threading import Thread
+import copy
 
 class VideoCamera(object):
     #320*240 original
     def __init__(self):
-        self.cap = cv2.VideoCapture(0)
+        self.cap = cv2.VideoCapture(1)
         # initialize the frame and the variable used to indicate
         # if the thread should be stopped
         self.frame = None
@@ -101,7 +102,6 @@ class VehiculoAutonomo (object):
         #Deteccion de Color Rojo
         self.RojoDetectado = 0
     
-    
     def _leer_qr(self, frame):
         barcodes = pyzbar.decode(frame)
         return barcodes
@@ -162,19 +162,22 @@ class VehiculoAutonomo (object):
         # When we perform the detection, it happens that we have more boxes for the same object, so we should use another function to remove this “noise”.
         # It’s called Non maximum suppresion.
         indexes = cv2.dnn.NMSBoxes(boxes, confidences, 0.5, 0.4)
+        cantidadEliminados = 0
         for i in range(len(boxes)):
                 if not i in indexes:
-                    del boxes[i]
-                    del confidences[i]
-                    del class_ids[i]
+                    del boxes[i-cantidadEliminados]
+                    del confidences[i-cantidadEliminados]
+                    del class_ids[i-cantidadEliminados]
+                    cantidadEliminados += 1
 
         if calcularFPS:
             print(1/(time.time()-tiempo_inicial))
 
         if mostrarResultado:
+            frameMostrado = copy.deepcopy(frame)
             for i in range(len(boxes)):
                 x, y, w, h = boxes[i]
-                label = str(classes[class_ids[i]])
+                label = str(self.classes[class_ids[i]])
                 if label == 'SemaforoRojo' or label== 'SemaforoDos':
                     color = self.colors[0] #indice va de 0 a 3 para 4 clases
                 elif label == 'SemaforoVerde':
@@ -183,12 +186,10 @@ class VehiculoAutonomo (object):
                     color = self.colors[2] #indice va de 0 a 3 para 4 clases
                 elif label == 'CartelCero':
                     color = self.colors[3] #indice va de 0 a 3 para 4 clases
-                cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
-                cv2.putText(frame, label, (x, y + 30), self.font, 3, color, 2)
+                cv2.rectangle(frameMostrado, (x, y), (x + w, y + h), color, 2)
+                cv2.putText(frameMostrado, label, (x, y + 30), self.font, 3, color, 2)
 
-            cv2.imshow('window-name',frame)
-            # if cv2.waitKey(10) & 0xFF == ord('q'):
-            #     break
+            cv2.imshow('buscandoObjetos',frameMostrado)
             
         if not retornarBoxes and not retornarConfidence:
             return class_ids
@@ -474,6 +475,7 @@ class VehiculoAutonomo (object):
                     if barcodes:
                         cv2.destroyWindow('buscandoQR')
                         barcodeData = barcodes[0].data.decode("utf-8")
+                        print("Deposito a buscar: ", barcodeData)
                         self.depositoABuscar = 0
                         self.tiempoDeEsperaInicial = time.time()
 
@@ -482,22 +484,24 @@ class VehiculoAutonomo (object):
                     tiempoInicialFPS = time.time()
                     self._detectarRojo(frameCompleto)
                     if self.RojoDetectado == 1:
-                        class_ids = list(set(self._buscarObjetos(frameCompleto)))
-                        print('Objetos detectados: ', class_ids)
-                        if class_ids:
-                            self.RojoDetectado = 0
-                        
-                    #if self.contadorFrames is 4:
-                        # class_ids = list(set(self._buscarObjetos(frameCompleto)))
-                        # print('Objetos detectados: ', class_ids)
-                    #    self.contadorFrames = 0
-
-                    self.contadorFrames += 1
+                        if self.contadorFrames is 4:
+                            class_ids = self._buscarObjetos(frameCompleto, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False)
+                            print('Objetos detectados: ', class_ids)
+                            if class_ids:
+                                self.RojoDetectado = 0
+                                if 2 in class_ids:
+                                    self.cartelDetectado = True
+                                    self.depositoDetectado = 0
+                                elif 3 in class_ids:
+                                    self.cartelDetectado = True
+                                    self.depositoDetectado = 1
+                            self.contadorFrames = 0
+                        self.contadorFrames += 1
 
                     frameOriginalRecortado = self._prepararFrame(frameCompleto)
                     frameConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
 
-                    cv2.imshow('frameParaProbar', frameConFiltro)
+                    # cv2.imshow('frameParaProbar', frameConFiltro)
                     
                     self.frameProcesado = frameOriginalRecortado
                     for fila in self.filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
@@ -541,8 +545,8 @@ class VehiculoAutonomo (object):
                     key = cv2.waitKey(10)
                     if key == ord('q'):  # 25fps
                         break
-                    elif key == ord('k'): #Con esta tecla simulamos el cartel a detectar
-                        self.cartelDetectado = True
+                    # elif key == ord('k'): #Con esta tecla simulamos el cartel a detectar
+                    #     self.cartelDetectado = True
 
                     print("FPS: ", (1/(time.time()-tiempoInicialFPS)))
             else: # Break the loop
@@ -552,6 +556,7 @@ class VehiculoAutonomo (object):
         self.cap.stop()
         # Closes all the frames
         cv2.destroyAllWindows()
+        exit()
 
 if __name__ == "__main__":
     vehiculoAutonomo = VehiculoAutonomo()
