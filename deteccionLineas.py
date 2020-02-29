@@ -10,7 +10,7 @@ import copy
 class VideoCamera(object):
     #320*240 original
     def __init__(self):
-        self.cap = cv2.VideoCapture(1)
+        self.cap = cv2.VideoCapture(0)
         # initialize the frame and the variable used to indicate
         # if the thread should be stopped
         self.frame = None
@@ -101,6 +101,9 @@ class VehiculoAutonomo (object):
 
         #Deteccion de Color Rojo
         self.RojoDetectado = 0
+
+        #Deteccion Linea Verde
+        self.ubicacion_punto_verde = 0
     
     def _leer_qr(self, frame):
         barcodes = pyzbar.decode(frame)
@@ -221,21 +224,20 @@ class VehiculoAutonomo (object):
 
     def _prepararFrame (self, frame):
         # frame = cv2.flip(frame, flipCode=-1)
-        frame = frame[0:int(self.height*0.5),0:int(self.width)]
+        frame = frame[int(self.height*0.5):self.height,0:int(self.width)]#frame = frame[0:int(self.height*0.5),0:int(self.width)]
         return frame
 
     def _aplicarFiltrosMascaras (self, frame):
-        #Defino parametros HLS o HSV para detectar solo lineas negras 
+        #Defino parametros HLS o HSV para eliminar fondo 
         lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
-        upper_black = np.array([150, 75, 255]) #HSV 255, 255, 90 #HLS[150, 75, 255]
+        upper_black = np.array([255, 255, 100 ]) #HSV 255, 255, 90 #HLS[150, 75, 255]
 
         #Aplico filtro de color con los parametros ya definidos
-        # hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS) #BRG2HLS
         hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #BRG2HLS
-        # cv2.imshow('framefilterHSV', hsv_right)
-        mask_right = cv2.inRange(frame, lower_black, upper_black)
+        mask_right = cv2.inRange(hsv_right, lower_black, upper_black) #frame
+        mask_right = np.invert(mask_right)
         res_right = cv2.bitwise_and(frame, frame, mask=mask_right)
-        # cv2.imshow('framefilter', res_right)
+        #cv2.imshow('framefilter', res_right)
 
         #Aplico filtro pasa bajos y deteccion de lineas por Canny
         '''
@@ -250,11 +252,11 @@ class VehiculoAutonomo (object):
         '''
         #Umbral Dinamico
         kernel = np.ones((3,3), np.uint8)
-        frame_e = cv2.erode(frame, kernel, iterations=1)
+        frame_e = cv2.erode(res_right, kernel, iterations=1)
         gray = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (3, 3), 0)
         gray = cv2.medianBlur(gray, 5)
-        dst2 = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 9, 5)
+        dst2 = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 9, 3)
         # cv2.imshow('framefilterdif', dst2)
         dif_gray_right = cv2.GaussianBlur(dst2, (11, 11), 0) #(mask, (5, 5), 0)
         #cv2.imshow('framefilterdif', frame_e)
@@ -263,7 +265,7 @@ class VehiculoAutonomo (object):
         canny_right = cv2.morphologyEx(canny_right, cv2.MORPH_CLOSE, kernel)
         kernel = np.ones((3,3), np.uint8)
         canny_right = cv2.erode(canny_right, kernel, iterations=1)
-        # cv2.imshow('framefilter', canny_right)
+        cv2.imshow('framefilter', canny_right)
         return canny_right
 
     def _obtenerPorcionesFrame (self, frameOriginal, frame, row, column):
@@ -413,12 +415,31 @@ class VehiculoAutonomo (object):
         self.frameProcesado[:,::dy,:] = grid_color
         self.frameProcesado[::dx,:,:] = grid_color
 
+    def _detectarLineaVerde(self):
+        #Corto el frame
+        frame = self.frameProcesado
+        frame = frame[100:320,0:int(self.width)]
+        #Defino parametros HSV para detectar color verde 
+        lower_green = np.array([20, 60, 100])
+        upper_green = np.array([80, 230, 140])
+
+        #Aplico filtro de color con los parametros ya definidos
+        hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
+        y, x = np.where(mask_green == 255)
+        x_mid= statistics.median(x)
+        x_mid_int=int(round(x_mid))
+        self.ubicacion_punto_verde = x_mid_int
     def _calcularDistanciasLineaRecta(self):
 
         ubicacion_punto_central = (self.right_points_up[0] + self.left_points_up[0]) / 2        
         if self.dentroDeBocacalle:
             ubicacion_punto_central = (self.right_points_up_last + self.left_points_up_last) / 2
             distancia_al_centro = (self.width/2) - ubicacion_punto_central
+        elif self.cartelDetectado:
+            ubicacion_punto_central = self.ubicacion_punto_verde
+            distancia_al_centro = (self.width/2) - ubicacion_punto_central
+
         else:
             distancia_al_centro = (self.width/2) - ubicacion_punto_central
 
@@ -468,6 +489,8 @@ class VehiculoAutonomo (object):
         while True:
             ret, frameCompleto = self.cap.read()
             if ret:
+                self.tiempoDeEsperaInicial = 0
+                self.depositoABuscar = 0
                 if self.depositoABuscar == -1:
                     cv2.imshow('buscandoQR', frameCompleto)
                     cv2.waitKey(10)
@@ -518,7 +541,8 @@ class VehiculoAutonomo (object):
                     
                     if self.cartelDetectado:
                         if self.depositoDetectado is self.depositoABuscar:
-                            self._girarLineaPunteada()
+                            self.filasDeseadas = []
+                            self._detectarLineaVerde()
                         else:
                             self.filasDeseadas = [2, 5]
                             self._detectarBocacalle()
@@ -532,7 +556,9 @@ class VehiculoAutonomo (object):
                     else: 
                         # Aca no se detecto ningun cartel y estoy pendiente a la espera de una curva a la derecha o izquierda
                         self._detectarCurvaDerecha()
-
+                    self.filasDeseadas = []
+                    self.cartelDetectado = 1
+                    self._detectarLineaVerde()
                     self._calcularDistanciasLineaRecta()
                     # self._moverVehiculo()
                         
