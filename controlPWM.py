@@ -19,8 +19,6 @@ import wiringpi as wpi
 #import logging
 #logging.basicConfig(level=logging.DEBUG)
 
-
-
 # Initialise the PCA9685 using the default address (0x40).
 servo_min = 0  #0  Min pulse length out of 4096
 servo_max = 4095  # Max pulse length out of 4096
@@ -67,7 +65,6 @@ def giroDerecha(pwm):
 	pwm.set_pwm(6, 0, servo_min)
 	pwm.set_pwm(1, 0, servo_min) #Delante.
 	pwm.set_pwm(5, 0, servo_max) #Delante.
-
 
 def giroIzquierda(pwm):
 	pwm.set_pwm(2, 0, servo_min)
