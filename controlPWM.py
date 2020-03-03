@@ -80,7 +80,7 @@ def stop(pwm):
 	pwm.set_pwm(5, 0, 0) #Delante.
 
 # print('Moving servo on channel 0, press Ctrl-C to quit...')
-miPwm = iniciarPWM()
+#miPwm = iniciarPWM()
 
 if __name__ == "__main__":
 	while True:
