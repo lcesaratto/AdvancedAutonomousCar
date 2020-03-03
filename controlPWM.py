@@ -8,6 +8,7 @@ import time
 # Import the PCA9685 module.
 import Adafruit_PCA9685
 import wiringpi as wpi
+import keyboard
 
 #wpi.wiringPiSetup()
 #wpi.pinMode(3,1)
@@ -72,11 +73,31 @@ def giroIzquierda(pwm):
 	pwm.set_pwm(1, 0, servo_max) #Delante.
 	pwm.set_pwm(5, 0, servo_min) #Delante.
 
+def stop(pwm):
+	pwm.set_pwm(2, 0, 0)
+	pwm.set_pwm(6, 0, 0)
+	pwm.set_pwm(1, 0, 0) #Delante.
+	pwm.set_pwm(5, 0, 0) #Delante.
 
-print('Moving servo on channel 0, press Ctrl-C to quit...')
+# print('Moving servo on channel 0, press Ctrl-C to quit...')
 miPwm = iniciarPWM()
-while True:
-	giroDerecha(miPwm)
-	miPwm.set_pwm(0, 0, servo_max)
-	miPwm.set_pwm(4, 0, servo_max)
-	time.sleep(10)
+
+if __name__ == "__main__":
+	while True:
+		if keyboard.is_pressed("e"):
+			stop(miPwm)
+		if keyboard.is_pressed("q"):
+			stop(miPwm)
+			break
+		if keyboard.is_pressed("w"):
+			forward(miPwm)
+		if keyboard.is_pressed("a"):
+			giroIzquierda(miPwm)
+		if keyboard.is_pressed("s"):
+			backward(miPwm)
+		if keyboard.is_pressed("d"):
+			giroDerecha(miPwm)
+		giroDerecha(miPwm)
+		miPwm.set_pwm(0, 0, servo_max)
+		miPwm.set_pwm(4, 0, servo_max)
+		# time.sleep(10)

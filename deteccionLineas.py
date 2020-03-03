@@ -6,6 +6,7 @@ import time
 from pyzbar import pyzbar
 from threading import Thread
 import copy
+from controlPWM import *
 
 class VideoCamera(object):
     #320*240 original
@@ -77,8 +78,6 @@ class VehiculoAutonomo (object):
         self.left_points_up = np.array([0, 0])
         self.right_points_up_2 = np.array([0, 0]) # Para la fila 5
         self.left_points_up_2 = np.array([0, 0])
-        # Array que determina la posicion hacia donde ir
-        self.accionATomar = [0, 0, 0, 0]
 
         # Banderas de prueba
         self.depositoDetectado = -1
@@ -430,6 +429,7 @@ class VehiculoAutonomo (object):
         x_mid= statistics.median(x)
         x_mid_int=int(round(x_mid))
         self.ubicacion_punto_verde = x_mid_int
+    
     def _calcularDistanciasLineaRecta(self):
 
         ubicacion_punto_central = (self.right_points_up[0] + self.left_points_up[0]) / 2        
@@ -447,35 +447,11 @@ class VehiculoAutonomo (object):
         #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
         
         if distancia_al_centro > 5:
-            self.accionATomar = [1, 0, 0, 0]
+            giroDerecha()
         elif distancia_al_centro < -5:
-            self.accionATomar = [0, 1, 0, 0]
+            giroIzquierda()
         else:
-            self.accionATomar = [0, 0, 1, 0]
-
-        # DISTANCIA_A_MANTENER_IZQ = 116
-        # DISTANCIA_A_MANTENER_DER = 58
-        # distanciaIzquierda = (self.width/2) - self.left_points_up[0]
-        # distanciaDerecha = self.right_points_up[0] - (self.width/2)
-        # print("IZQUIERDA:   ", distanciaIzquierda, "    DERECHA:    ",distanciaDerecha)
-        # if DISTANCIA_A_MANTENER_IZQ*1.05 < distanciaIzquierda:
-        #     self.accionATomar = [1, 0, 1, 0]
-        # elif DISTANCIA_A_MANTENER_IZQ > distanciaIzquierda:
-        #     self.accionATomar = [0, 0, 0, 0]
-        # if DISTANCIA_A_MANTENER_DER*1.05 < distanciaDerecha:
-        #     self.accionATomar = [0, 1, 1, 0]
-        # elif DISTANCIA_A_MANTENER_DER > distanciaDerecha:
-        #     self.accionATomar = [0, 0, 0, 0]
-
-    def _moverVehiculo(self):
-        if self.accionATomar[0] == 1:
-            print("Girar a la derecha")
-        if self.accionATomar[1] == 1:
-            print("Girar a la izquierda")
-        if self.accionATomar[2] == 1:
-            print("Ir hacia adelante")
-        if self.accionATomar[3] == 1:
-            print("Ir hacia atras")
+            forward()
 
     def _girarLineaPunteada(self):
         self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
