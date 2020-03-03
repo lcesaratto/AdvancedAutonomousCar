@@ -61,17 +61,37 @@ def backward(pwm):
 	pwm.set_pwm(1, 0, servo_min) #Delante.
 	pwm.set_pwm(5, 0, servo_min) #Delante.
 
-def giroDerecha(pwm):
-	pwm.set_pwm(2, 0, servo_max)
-	pwm.set_pwm(6, 0, servo_min)
-	pwm.set_pwm(1, 0, servo_min) #Delante.
-	pwm.set_pwm(5, 0, servo_max) #Delante.
+def giroDerechaSuave(pwm, servo_max_der, servo_max_izq):
+	pwm.set_pwm(2, 0, servo_min) #Atras derecha
+	pwm.set_pwm(6, 0, servo_min) #Atras izquierda
+	pwm.set_pwm(1, 0, int(servo_max_der)) #Delante derecha
+	pwm.set_pwm(5, 0, int(servo_max_izq)) #Delante izquierda
+	pwm.set_pwm(0, 0, servo_max)
+	pwm.set_pwm(4, 0, servo_max)
 
-def giroIzquierda(pwm):
-	pwm.set_pwm(2, 0, servo_min)
-	pwm.set_pwm(6, 0, servo_max)
-	pwm.set_pwm(1, 0, servo_max) #Delante.
-	pwm.set_pwm(5, 0, servo_min) #Delante.
+def giroIzquierdaSuave(pwm, servo_max_der, servo_max_izq):
+	pwm.set_pwm(2, 0, servo_min) #Atras derecha
+	pwm.set_pwm(6, 0, servo_min) #Atras izquierda
+	pwm.set_pwm(1, 0, int(servo_max_der)) #Delante derecha
+	pwm.set_pwm(5, 0, int(servo_max_izq)) #Delante izquierda
+	pwm.set_pwm(0, 0, servo_max)
+	pwm.set_pwm(4, 0, servo_max)
+
+def giroDerechaBrusco(pwm, servo_max_der, servo_max_izq):
+	pwm.set_pwm(2, 0, int(servo_max_der)) #Atras derecha
+	pwm.set_pwm(6, 0, servo_min) #Atras izquierda
+	pwm.set_pwm(1, 0, servo_min) #Delante derecha
+	pwm.set_pwm(5, 0, int(servo_max_izq)) #Delante izquierda
+	pwm.set_pwm(0, 0, servo_max)
+	pwm.set_pwm(4, 0, servo_max)
+
+def giroIzquierdaBrusco(pwm, servo_max_der, servo_max_izq):
+	pwm.set_pwm(2, 0, servo_min) #Atras derecha
+	pwm.set_pwm(6, 0, int(servo_max_izq)) #Atras izquierda
+	pwm.set_pwm(1, 0, int(servo_max_der)) #Delante derecha
+	pwm.set_pwm(5, 0, servo_min) #Delante izquierda
+	pwm.set_pwm(0, 0, servo_max)
+	pwm.set_pwm(4, 0, servo_max)
 
 def stop(pwm):
 	pwm.set_pwm(2, 0, 0)
@@ -79,10 +99,10 @@ def stop(pwm):
 	pwm.set_pwm(1, 0, 0) #Delante.
 	pwm.set_pwm(5, 0, 0) #Delante.
 
-# print('Moving servo on channel 0, press Ctrl-C to quit...')
-#miPwm = iniciarPWM()
-
 if __name__ == "__main__":
+	print('Moving servo on channel 0, press Ctrl-C to quit...')
+	miPwm = iniciarPWM()
+
 	while True:
 		if keyboard.is_pressed("e"):
 			stop(miPwm)
