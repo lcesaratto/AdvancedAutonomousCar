@@ -22,7 +22,7 @@ import keyboard
 
 # Initialise the PCA9685 using the default address (0x40).
 servo_min = 0  #0  Min pulse length out of 4096
-servo_max = 4095  # Max pulse length out of 4096
+#servo_max = 4095  # Max pulse length out of 4096
 
 def iniciarPWM():
 	pwm = Adafruit_PCA9685.PCA9685()
@@ -49,23 +49,30 @@ def iniciarPWM():
 
 #Termina funcion init
 
-def forward(pwm):
-	pwm.set_pwm(2, 0, servo_min)
-	pwm.set_pwm(6, 0, servo_min)
-	pwm.set_pwm(1, 0, servo_max) #Delante.
-	pwm.set_pwm(5, 0, servo_max) #Delante.
+def forward(pwm, servo_fw):
+	pwm.set_pwm(2, 0, servo_min) #Atras Derecha
+	pwm.set_pwm(6, 0, servo_min) #Atras Izquierda
+	pwm.set_pwm(1, 0, servo_fw) #Delante Derecha
+	pwm.set_pwm(5, 0, servo_fw) #Delante Izquierda
+	pwm.set_pwm(0, 0, servo_max)
+	pwm.set_pwm(4, 0, servo_max)
 
-def backward(pwm):
-	pwm.set_pwm(2, 0, servo_max)
-	pwm.set_pwm(6, 0, servo_max)
-	pwm.set_pwm(1, 0, servo_min) #Delante.
-	pwm.set_pwm(5, 0, servo_min) #Delante.
+
+def backward(pwm, servo_bw):
+	pwm.set_pwm(2, 0, servo_bw) #Atras Derecha
+	pwm.set_pwm(6, 0, servo_bw) #Atras Izquierda
+	pwm.set_pwm(1, 0, servo_min) #Delante Derecha
+	pwm.set_pwm(5, 0, servo_min) #Delante Izquierda
+	pwm.set_pwm(0, 0, servo_max)
+	pwm.set_pwm(4, 0, servo_max)
+
 
 def giroDerecha(pwm):
 	pwm.set_pwm(2, 0, servo_max)
 	pwm.set_pwm(6, 0, servo_min)
 	pwm.set_pwm(1, 0, servo_min) #Delante.
 	pwm.set_pwm(5, 0, servo_max) #Delante.
+	
 
 def giroIzquierda(pwm):
 	pwm.set_pwm(2, 0, servo_min)
@@ -74,10 +81,10 @@ def giroIzquierda(pwm):
 	pwm.set_pwm(5, 0, servo_min) #Delante.
 
 def stop(pwm):
-	pwm.set_pwm(2, 0, 0)
-	pwm.set_pwm(6, 0, 0)
-	pwm.set_pwm(1, 0, 0) #Delante.
-	pwm.set_pwm(5, 0, 0) #Delante.
+	pwm.set_pwm(2, 0, 0) #Atras Derecha
+	pwm.set_pwm(6, 0, 0) #Atras Izquierda
+	pwm.set_pwm(1, 0, 0) #Delante Derecha
+	pwm.set_pwm(5, 0, 0) #Delante Izquierda
 
 # print('Moving servo on channel 0, press Ctrl-C to quit...')
 #miPwm = iniciarPWM()

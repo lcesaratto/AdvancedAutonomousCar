@@ -452,12 +452,12 @@ class VehiculoAutonomo (object):
         #cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
         #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
         
-        if distancia_al_centro > 5:
-            giroDerecha(self.miPwm)
-        elif distancia_al_centro < -5:
-            giroIzquierda(self.miPwm)
+        if distancia_al_centro > 50:
+            giroDerechaSuave(self.miPwm, distancia_al_centro*5, distancia_al_centro*10)
+        elif distancia_al_centro < -50:
+            giroIzquierdaSuave(self.miPwm, distancia_al_centro*10, distancia_al_centro*5)
         else:
-            forward(self.miPwm)
+            forward(self.miPwm, 1000, 1000)
 
     def _girarLineaPunteada(self):
         self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
