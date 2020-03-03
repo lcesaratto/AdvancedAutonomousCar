@@ -105,6 +105,9 @@ class VehiculoAutonomo (object):
 
         #Deteccion Linea Verde
         self.ubicacion_punto_verde = 0
+
+        #PWM
+        self.miPwm = iniciarPWM()
     
     def _leer_qr(self, frame):
         barcodes = pyzbar.decode(frame)
@@ -431,7 +434,10 @@ class VehiculoAutonomo (object):
         hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
         y, x = np.where(mask_green == 255)
-        x_mid= statistics.median(x)
+        try:
+            x_mid= statistics.median(x)
+        except:
+            x_mid = 0
         x_mid_int=int(round(x_mid))
         self.ubicacion_punto_verde = x_mid_int
     
@@ -452,11 +458,11 @@ class VehiculoAutonomo (object):
         #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
         
         if distancia_al_centro > 5:
-            giroDerecha()
+            giroDerecha(self.miPwm)
         elif distancia_al_centro < -5:
-            giroIzquierda()
+            giroIzquierda(self.miPwm)
         else:
-            forward()
+            forward(self.miPwm)
 
     def _girarLineaPunteada(self):
         self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
@@ -551,6 +557,7 @@ class VehiculoAutonomo (object):
                     # Press Q on keyboard to  exit
                     key = cv2.waitKey(10)
                     if key == ord('q'):  # 25fps
+                        stop(self.pwm)
                         break
                     # elif key == ord('k'): #Con esta tecla simulamos el cartel a detectar
                     #     self.cartelDetectado = True
