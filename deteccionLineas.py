@@ -6,8 +6,9 @@ import time
 from pyzbar import pyzbar
 from threading import Thread
 import copy
-from controlPWM import *
+# from controlPWM import *
 
+'''
 class VideoCamera(object):
     #320*240 original
     def __init__(self):
@@ -41,6 +42,7 @@ class VideoCamera(object):
     def stop(self):
         # indicate that the thread should be stopped
         self.stopped = True
+'''
 
 class VehiculoAutonomo (object):
     def __init__(self):
@@ -209,24 +211,27 @@ class VehiculoAutonomo (object):
         # Create a VideoCapture object and read from input file
         # If the input is the camera, pass 0 instead of the video file name
         #cap = cv2.VideoCapture('Videos/20200107_163552.mp4')
-        #cap = cv2.VideoCapture(0)#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
-        cap = VideoCamera()
-        cap.start()
-        time.sleep(2)
+        cap = cv2.VideoCapture(0)#('Videos/WhatsApp Video 2019-10-12 at 6.19.29 PM(2).mp4')
+        # cap = VideoCamera()
+        # cap.start()
+        # time.sleep(2)
         # Check if camera opened successfully
         #if not cap.isOpened():
         #    print("Error opening video stream or file")
         return cap
 
     def _obtenerParametrosFrame(self):
-        fps =  30#self.cap.get(cv2.CAP_PROP_FPS)
-        width = 640#self.cap.get(cv2.CAP_PROP_FRAME_WIDTH )
-        height = 480#self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        # fps =  30#
+        fps = self.cap.get(cv2.CAP_PROP_FPS)
+        # width = 640#
+        width = self.cap.get(cv2.CAP_PROP_FRAME_WIDTH )
+        # height = 480#
+        height = self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
         return fps, width, height
 
     def _prepararFrame (self, frame):
         # frame = cv2.flip(frame, flipCode=-1)
-        frame = frame[int(self.height*0.5):self.height,0:int(self.width)]#frame = frame[0:int(self.height*0.5),0:int(self.width)]
+        frame = frame[int(self.height*0.5):int(self.height),0:int(self.width)]#frame = frame[0:int(self.height*0.5),0:int(self.width)]
         return frame
 
     def _aplicarFiltrosMascaras (self, frame):
@@ -465,12 +470,12 @@ class VehiculoAutonomo (object):
         self.activarBuscarFramesLineaPunteada = True
 
     def comenzar(self):
-        # while self.cap.isOpened():
-        #     ret, frameCompleto = self.cap.read()
-        #     if ret:
-        while True:
+        while self.cap.isOpened():
             ret, frameCompleto = self.cap.read()
             if ret:
+        # while True:
+        #     ret, frameCompleto = self.cap.read()
+        #     if ret:
                 self.tiempoDeEsperaInicial = 0
                 self.depositoABuscar = 0
                 if self.depositoABuscar == -1:
