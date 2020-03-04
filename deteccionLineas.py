@@ -6,7 +6,7 @@ import time
 from pyzbar import pyzbar
 from threading import Thread
 import copy
-# from controlPWM import *
+from controlPWM import *
 
 '''
 class VideoCamera(object):
@@ -108,6 +108,7 @@ class VehiculoAutonomo (object):
 
         #PWM
         self.miPwm = iniciarPWM()
+        self.ultima_distancia = 0    
     
     def _leer_qr(self, frame):
         barcodes = pyzbar.decode(frame)
@@ -433,6 +434,7 @@ class VehiculoAutonomo (object):
         #Aplico filtro de color con los parametros ya definidos
         hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
+        cv2.imshow('frameResulting', mask_green)
         y, x = np.where(mask_green == 255)
         try:
             x_mid= statistics.median(x)
@@ -453,17 +455,22 @@ class VehiculoAutonomo (object):
 
         else:
             distancia_al_centro = (self.width/2) - ubicacion_punto_central
-
+        
         #cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
         #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
-        
-        if distancia_al_centro > 50:
-            giroDerechaSuave(self.miPwm, distancia_al_centro*5, distancia_al_centro*10)
-        elif distancia_al_centro < -50:
+        print(distancia_al_centro)
+        if distancia_al_centro > 50 and abs(distancia_al_centro) != 320:
             giroIzquierdaSuave(self.miPwm, distancia_al_centro*10, distancia_al_centro*5)
+        elif distancia_al_centro < -50 and abs(distancia_al_centro) != 320:
+            giroDerechaSuave(self.miPwm, abs(distancia_al_centro)*5, abs(distancia_al_centro)*10)
+        elif abs(distancia_al_centro) == 320 and self.ultima_distancia < 0:
+                giroDerechaBrusco(self.miPwm, abs(distancia_al_centro)*3, abs(distancia_al_centro)*5)
+        elif abs(distancia_al_centro) == 320 and self.ultima_distancia > 0:
+                giroIzquierdaBrusco(self.miPwm, distancia_al_centro*5, distancia_al_centro*3)
         else:
-            forward(self.miPwm, 1000, 1000)
-
+            forward(self.miPwm, 1000)
+        if abs(distancia_al_centro) != 320:
+            self.ultima_distancia = distancia_al_centro
     def _girarLineaPunteada(self):
         self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         self.filasDeseadas = [0,1,2,3,4,5]
@@ -526,11 +533,12 @@ class VehiculoAutonomo (object):
                                 porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
                                 self._reconstruirFrame(porcionFrameProcesado, fila, columna)
                     
+                    
                     if self.cartelDetectado:
                         if self.depositoDetectado is self.depositoABuscar:
                             self.filasDeseadas = []
                             self._detectarLineaVerde()
-                        else:
+                        '''else:
                             self.filasDeseadas = [2, 5]
                             self._detectarBocacalle()
                             # Aca se limpia la bandera bocacalleDetectada mediante otra bandera dentroDeBocacalle. NO CONFUNDIR
@@ -540,6 +548,7 @@ class VehiculoAutonomo (object):
                                 self.cartelDetectado = False
                                 self.dentroDeBocacalle = False
                                 self.filasDeseadas = [2]
+                        '''
                     else: 
                         # Aca no se detecto ningun cartel y estoy pendiente a la espera de una curva a la derecha o izquierda
                         self._detectarCurvaDerecha()
@@ -552,12 +561,12 @@ class VehiculoAutonomo (object):
                     self._dibujarGrilla()
 
                     # Display the resulting frame
-                    cv2.imshow('frameResulting', self.frameProcesado)
+                    #cv2.imshow('frameResulting', self.frameProcesado)
 
                     # Press Q on keyboard to  exit
                     key = cv2.waitKey(10)
                     if key == ord('q'):  # 25fps
-                        stop(self.pwm)
+                        stop(self.miPwm)
                         break
                     # elif key == ord('k'): #Con esta tecla simulamos el cartel a detectar
                     #     self.cartelDetectado = True
@@ -567,7 +576,7 @@ class VehiculoAutonomo (object):
                 break
 
         # When everything done, release the video capture object
-        self.cap.stop()
+        self.cap.release()
         # Closes all the frames
         cv2.destroyAllWindows()
         exit()

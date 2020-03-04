@@ -22,7 +22,7 @@ import keyboard
 
 # Initialise the PCA9685 using the default address (0x40).
 servo_min = 0  #0  Min pulse length out of 4096
-#servo_max = 4095  # Max pulse length out of 4096
+servo_max = 4095  # Max pulse length out of 4096
 
 def iniciarPWM():
 	pwm = Adafruit_PCA9685.PCA9685()
