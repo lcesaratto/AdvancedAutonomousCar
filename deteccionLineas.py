@@ -237,7 +237,7 @@ class VehiculoAutonomo (object):
         canny_right = cv2.morphologyEx(canny_right, cv2.MORPH_CLOSE, kernel)
         kernel = np.ones((3,3), np.uint8)
         canny_right = cv2.erode(canny_right, kernel, iterations=1)
-        cv2.imshow('framefilter', canny_right)
+        #cv2.imshow('framefilter', canny_right)
         return canny_right
 
     def _obtenerPorcionesFrame (self, frameOriginal, frame, row, column):
@@ -390,16 +390,26 @@ class VehiculoAutonomo (object):
     def _detectarLineaVerde(self):
         #Corto el frame
         frame = self.frameProcesado
-        frame = frame[100:320,0:int(self.width)]
+        frame = frame[100:320,0:int(self.width)] #100 320
         #Defino parametros HSV para detectar color verde 
-        lower_green = np.array([20, 60, 100])
-        upper_green = np.array([80, 230, 140])
+        lower_green_noche = np.array([20, 60, 100])#np.array([20, 60, 100])
+        upper_green_noche = np.array([80, 230, 140])#np.array([80, 230, 140])
+        
+        lower_green = np.array([20, 40, 100])#np.array([20, 60, 100])
+        upper_green = np.array([80, 230, 140])#np.array([80, 230, 140])
 
         #Aplico filtro de color con los parametros ya definidos
+        frame = cv2.GaussianBlur(frame, (3, 3), 0)
         hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
-        cv2.imshow('frameResulting', mask_green)
-        y, x = np.where(mask_green == 255)
+        #kernel = np.ones((3,3), np.uint8)
+        #mask_green_a = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
+        kernel = np.ones((7,7), np.uint8)
+        mask_green_e = cv2.dilate(mask_green, kernel, iterations=1)
+        kernel = np.ones((11,11), np.uint8)
+        mask_green_c = cv2.morphologyEx(mask_green_e, cv2.MORPH_CLOSE, kernel)
+        cv2.imshow('frameResulting', mask_green_c)
+        y, x = np.where(mask_green_e == 255)
         try:
             x_mid= statistics.median(x)
         except:
@@ -423,19 +433,43 @@ class VehiculoAutonomo (object):
         #cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
         #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
         print(distancia_al_centro)
-        if distancia_al_centro > 50 and abs(distancia_al_centro) != 320:
-            giroIzquierdaSuave(self.miPwm, distancia_al_centro*10, distancia_al_centro*5)
-        elif distancia_al_centro < -50 and abs(distancia_al_centro) != 320:
-            giroDerechaSuave(self.miPwm, abs(distancia_al_centro)*5, abs(distancia_al_centro)*10)
-        elif abs(distancia_al_centro) == 320 and self.ultima_distancia < 0:
-                giroDerechaBrusco(self.miPwm, abs(distancia_al_centro)*3, abs(distancia_al_centro)*5)
-        elif abs(distancia_al_centro) == 320 and self.ultima_distancia > 0:
-                giroIzquierdaBrusco(self.miPwm, distancia_al_centro*5, distancia_al_centro*3)
+        vel_brusca_max=3000
+        vel_brusca_min=2200
+        vel_suave_max=2200
+        vel_suave_min=1700
+        if abs(distancia_al_centro) == 320:
+            if self.contandoFramesParado != 10:
+                stop(self.miPwm)
+                self.contandoFramesParado += 1
+                self.contandoFramesBackward = 0
+            #elif self.contandoFramesBackward != 3:
+            else:
+                #backward(self.miPwm, 1700)
+                if self.ultima_distancia >= 0:
+                    giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_min)
+                else:
+                    giroIzquierdaBrusco(self.miPwm, vel_brusca_min, vel_brusca_min)
+                self.contandoFramesBackward += 1
+                if self.contandoFramesBackward == 3:
+                    self.contandoFramesParado = 0
         else:
-            forward(self.miPwm, 1000)
-        if abs(distancia_al_centro) != 320:
+            self.contandoFramesParado = 0
+            if distancia_al_centro > 50 and abs(distancia_al_centro) < 200:
+                print("Izquierda Suave")
+                giroIzquierdaSuave(self.miPwm, vel_suave_max, vel_suave_min)
+            elif distancia_al_centro < -50 and abs(distancia_al_centro) < 200:
+                giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
+                print("Derecha Suave")
+            elif 320 > abs(distancia_al_centro) >= 200 and self.ultima_distancia <= 0:
+                    giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
+                    print("Derecha Brusco")
+            elif 320 > abs(distancia_al_centro) >= 200 and self.ultima_distancia > 0:
+                    giroIzquierdaBrusco(self.miPwm, vel_brusca_max,vel_brusca_min)
+                    print("Izquierda Brusco")
+            else:
+                forward(self.miPwm, vel_suave_min)
+        if abs(distancia_al_centro) < 200:
             self.ultima_distancia = distancia_al_centro
-    
     def _girarLineaPunteada(self):
         self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         self.filasDeseadas = [0,1,2,3,4,5]
@@ -530,7 +564,7 @@ class VehiculoAutonomo (object):
 
                     # Press Q on keyboard to  exit
                     key = cv2.waitKey(10)
-                    if key == ord('q'):  # 25fps
+                    if key == ord('q') or key == ord('Q'):  # 25fps
                         stop(self.miPwm)
                         break
                     # elif key == ord('k'): #Con esta tecla simulamos el cartel a detectar
