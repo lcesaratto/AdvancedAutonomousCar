@@ -72,7 +72,10 @@ class VehiculoAutonomo (object):
 
         #PWM
         self.miPwm = iniciarPWM()
-        self.ultima_distancia = 0    
+        self.ultima_distancia = 0
+
+        #Luminosidad Ambiente
+        self.luminosidadAmbiente =1
     
     def _leer_qr(self, frame):
         barcodes = pyzbar.decode(frame)
@@ -470,11 +473,30 @@ class VehiculoAutonomo (object):
                 forward(self.miPwm, vel_suave_min)
         if abs(distancia_al_centro) < 200:
             self.ultima_distancia = distancia_al_centro
+    
     def _girarLineaPunteada(self):
         self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         self.filasDeseadas = [0,1,2,3,4,5]
         self.activarBuscarFramesLineaPunteada = True
 
+    def _obtenerLuminosidadAmbiente(self, frameCompleto):
+        lower = np.array([100, 100, 100])
+        upper = np.array([255, 255, 255])
+        mask = cv2.inRange(frameCompleto, lower, upper)
+        res = cv2.bitwise_and(frameCompleto, frameCompleto, mask=mask)
+        frameCompleto = cv2.cvtColor(res, cv2.COLOR_BGR2HLS)
+        L = frameCompleto[:,:,1]
+        L = L[L != 0]
+        Lprom = np.average(L)
+
+        minValorLum = 120
+        maxValorLum = 160
+        minMultiplicador = 2
+        maxMultiplicador = 3
+        m = -(maxMultiplicador - minMultiplicador)/(maxValorLum - minValorLum)
+        h = minMultiplicador - m * maxValorLum
+        self.luminosidadAmbiente = Lprom * m + h
+    
     def comenzar(self):
         while self.cap.isOpened():
             ret, frameCompleto = self.cap.read()
