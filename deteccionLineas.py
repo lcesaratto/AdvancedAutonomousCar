@@ -15,15 +15,7 @@ class VehiculoAutonomo (object):
         self.frameProcesado = []
         # Especificamos mediante los siguientes array que porciones de frame procesar
         self.filasDeseadas = [2]
-        self.columnasDeseadas = []
-        # Variables y banderas utulizadas cuando se detecta la curva derecha
-        self.dentroCurvaDerecha = False
-        self.distanciaDerecha_arr = np.zeros(10)
-        self.distanciaDerecha_med = 0
-        self.indice_ultima_posicion_3 = 0
-        self.array3_listo = False
-        self.last = 0
-        self.up_point = np.array([0,0])
+        self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         # Variables y banderas utilizadas cuando se detecta la bocacalle
         self.bocacalleDetectada=False
         self.right_points_up_arr = np.zeros(10)
@@ -33,8 +25,8 @@ class VehiculoAutonomo (object):
         self.left_points_up_last = np.array([0, 0])
         self.right_points_up_last = np.array([0, 0])
         self.dentroDeBocacalle = False
-        self.ultimas_posiciones = np.zeros(10) # Array para almacenar las ultimas 10 posiciones del vehiculo
-        self.indice_ultima_posicion = 0
+        # Array para almacenar las ultimas 10 posiciones del vehiculo
+        self.ultimas_posiciones = np.zeros(10)
         self.indice_ultima_posicion_2 = 0
         # Cuando se detecta el cartel o se pulsa la letra K
         self.cartelDetectado = False
@@ -43,36 +35,25 @@ class VehiculoAutonomo (object):
         self.left_points_up = np.array([0, 0])
         self.right_points_up_2 = np.array([0, 0]) # Para la fila 5
         self.left_points_up_2 = np.array([0, 0])
-
         # Banderas de prueba
         self.depositoHallado = -1
         self.depositoABuscar = -1
-        self.activarBuscarFramesLineaPunteada = False
-
         # Deteccion de objetos
         self.net = self._cargarModelo()
         self.classes = self._cargarClases()
-        # self.height = 480
-        # self.width = 640
         self.layer_names = self.net.getLayerNames()
         self.output_layers = [self.layer_names[i[0] - 1] for i in self.net.getUnconnectedOutLayers()]
         self.colors = np.random.uniform(0, 255, size=(len(self.classes), 3))
         self.font = cv2.FONT_HERSHEY_PLAIN
-
         # Contador de tiempo
         self.tiempoDeEsperaInicial = -1
-        self.contadorFrames = 0
-
         #Deteccion de Color Rojo
         self.RojoDetectado = 0
-
         #Deteccion Linea Verde
         self.ubicacion_punto_verde = 0
-
         #PWM
-        # self.miPwm = iniciarPWM() # ToDo: Descomentar esta linea
+        self.miPwm = iniciarPWM() # ToDo: Descomentar esta linea
         self.ultima_distancia = 0
-
         #Luminosidad Ambiente
         self.multiplicadorLuminosidadAmbiente = 2
     
@@ -215,22 +196,23 @@ class VehiculoAutonomo (object):
         # Aplicamos filtros, entre ellos canny
         frameOriginalRecortadoConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
         # cv2.imshow('frameParaProbar', frameOriginalRecortadoConFiltro)
-        
+
         # Aca solo creo un numpy array con las mismas dimensiones que el frame original recortado
         self.frameProcesado = frameOriginalRecortado
 
         # Analizo con hough las filas o columnas 
         for fila in self.filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
-            for columna in range(16):
-                porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameOriginalRecortadoConFiltro, fila, columna)
-                porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
-                self._reconstruirFrame(porcionFrameProcesado, fila, columna)
-        for columna in self.columnasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
-            for fila in range(6):
-                if fila not in self.filasDeseadas:
-                    porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameOriginalRecortadoConFiltro, fila, columna)
-                    porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
-                    self._reconstruirFrame(porcionFrameProcesado, fila, columna)
+            # for columna in range(16):
+            for columna in self.columnasDeseadas:
+                porcionFrameOriginalConFiltro, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameOriginalRecortadoConFiltro, fila, columna)
+                porcionFrameProcesado = self._procesarPorcionFrame(porcionFrameOriginalConFiltro, porcionFrameOriginal, fila, columna) #ToDo: si comentamos la linea que reconstruye el retorno no es necesario
+                # self._reconstruirFrame(porcionFrameProcesado, fila, columna)
+        # for columna in self.columnasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
+        #     for fila in range(6):
+        #         if fila not in self.filasDeseadas:
+        #             porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameOriginalRecortadoConFiltro, fila, columna)
+        #             porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
+        #             self._reconstruirFrame(porcionFrameProcesado, fila, columna)
 
     def _prepararFrame (self, frame):
         # frame = cv2.flip(frame, flipCode=-1)
@@ -278,17 +260,17 @@ class VehiculoAutonomo (object):
         #cv2.imshow('framefilter', canny_right)
         return canny_right
 
-    def _obtenerPorcionesFrame (self, frameOriginal, frame, row, column):
-        frameCut=frame[(200-row*40):(240-row*40),(40*column):(40+40*column)]
+    def _obtenerPorcionesFrame (self, frameOriginal, frameOriginalConFiltro, row, column):
+        frameOriginalConFiltroCut=frameOriginalConFiltro[(200-row*40):(240-row*40),(40*column):(40+40*column)]
         frameOriginalCut=frameOriginal[(200-row*40):(240-row*40),(40*column):(40+40*column)]
-        return frameCut, frameOriginalCut
+        return frameOriginalConFiltroCut, frameOriginalCut
 
-    def _procesarPorcionFrame (self, cannyCut, frameCut, fila, columna):
+    def _procesarPorcionFrame (self, porcionFrameOriginalConFiltro, porcionFrameOriginal, fila, columna):
 
         try:
-            # frameCut = canny_right
+            # porcionFrameOriginal = canny_right
             ## Aplico Transformada de Hough
-            lines = cv2.HoughLinesP(cannyCut, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
+            lines = cv2.HoughLinesP(porcionFrameOriginalConFiltro, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
 
             # Draw lines on the image
             if lines is not None:
@@ -296,12 +278,11 @@ class VehiculoAutonomo (object):
                 # print(cant_lineas)
                 
                 if cant_lineas>100: # print('Se detecto una curva')
-                    frameCut[:,:,2] = frameCut[:,:,2] + 30
+                    porcionFrameOriginal[:,:,2] = porcionFrameOriginal[:,:,2] + 30 #Pintamos de color rojo las porciones con curvas
                 else: # print('Se detecto una linea')
                     x1M=0
                     x1M_2=0
                     y1M=0
-
 
                     for line in lines:
                         x1, y1, x2, y2 = line[0]
@@ -324,25 +305,26 @@ class VehiculoAutonomo (object):
                             self.left_points_down_2 = [x2, y2] 
 
                         # Guardamos la posicion del punto superior (frente al vehiculo)
-                        if self.dentroCurvaDerecha:
-                            if (columna is int(self.last/40)) and y1>y1M:
-                            # if (self.last*0.7< (x1+40*columna) < self.last*1.3) and y1>y1M:
-                                y1M=y1
-                                self.up_point = [self.last,y1+40*(5-fila)]
+                        # if self.dentroCurvaDerecha:
+                        #     if (columna is int(self.last/40)) and y1>y1M:
+                        #     # if (self.last*0.7< (x1+40*columna) < self.last*1.3) and y1>y1M:
+                        #         y1M=y1
+                        #         self.up_point = [self.last,y1+40*(5-fila)]
                                
                         # x1m=x1
                         # right_points = [(x1,y1), (x2,y2)]
 
-                        cv2.line(frameCut,(x1,y1),(x2,y2),(0,0,255),2)
-                        # cv2.line(frameCut,(frameCut.shape[1]-1,x1),(0,y1),255,2)
+                        cv2.line(porcionFrameOriginal,(x1,y1),(x2,y2),(0,0,255),2) # ToDo: Comentar esta linea
+                        # cv2.line(porcionFrameOriginal,(porcionFrameOriginal.shape[1]-1,x1),(0,y1),255,2)
 
-                    frameCut[:,:,0] = frameCut[:,:,0]+30
+                    # ToDO: comentar las dos lineas siguientes que pintan porciones de frame
+                    porcionFrameOriginal[:,:,0] = porcionFrameOriginal[:,:,0]+30 #Si se detecto una linea pintar el frame de color azul
             else:
-                frameCut[:,:,1] = frameCut[:,:,1] + 30        
+                porcionFrameOriginal[:,:,1] = porcionFrameOriginal[:,:,1] + 30 #Si no se detecto ninguna linea, pintamos de color verde  
 
         except Exception as e:
             print(e)
-        return frameCut
+        return porcionFrameOriginal # ToDo: Este retorno no es mas necesario en la version final
 
     def _reconstruirFrame(self, porcionFrameProcesado, fila, columna):
         for x in range(40): #filas
@@ -350,31 +332,35 @@ class VehiculoAutonomo (object):
                 self.frameProcesado[200-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
 
     def _detectarBocacalle(self):
-        if self.bocacalleDetectada:
-            cv2.line(self.frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
-        else:
-            cv2.line(self.frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
+        # if self.bocacalleDetectada:
+        #     cv2.line(self.frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
+        # else:
+        #     cv2.line(self.frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
 
-        cv2.line(self.frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
+        # cv2.line(self.frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
+
         dist_line_down = self.right_points_up[0] - self.left_points_up[0]
         dist_line_up = self.right_points_up_2[0] - self.left_points_up_2[0]
             
-        if ((dist_line_down > 200)): #En promedio 170 # or dist_line_down < 150
-            if not self.bocacalleDetectada:
-                self.right_points_up_last = self.right_points_up_med#int(statistics.median(self.right_points_up_arr))
-                self.left_points_up_last = self.left_points_up_med#int(statistics.median(self.left_points_up_arr))
-            self.bocacalleDetectada=True
-            if dist_line_up < 200:
-                self.right_points_up_last = self.right_points_up_2[0]
+        if ((dist_line_down > 200)): #Si en la fila inferior de la camara, la distancia entre las lineas negras laterales es mayor a 200
+            if not self.bocacalleDetectada: #Y la bandera no esta seteada aun
+                self.right_points_up_last = self.right_points_up_med #Guarda el ultimo valor de la mediana cuando entra en bocacalle por unica vez
+                self.left_points_up_last = self.left_points_up_med 
+            self.bocacalleDetectada=True #Seteamos la bandera
+            # ToDo: Aca podemos setear la fila superior como la deseada
+            if dist_line_up < 200: #Si la distancia entre lineas negras en la fila superior de la camara, es menor a 200, ya encontro la proxima calle
+                self.right_points_up_last = self.right_points_up_2[0] #Voy guardando los puntos superiores
                 self.left_points_up_last = self.left_points_up_2[0]
-        else:
-            if (self.indice_ultima_posicion_2 is 10):
+
+        else: #Si no se detecto bocacalle todavia
+            if (self.indice_ultima_posicion_2 is 10): #Resetea el indice del buffer circular
                 self.indice_ultima_posicion_2 = 0
-            self.right_points_up_arr[self.indice_ultima_posicion_2] = self.right_points_up[0]
+            self.right_points_up_arr[self.indice_ultima_posicion_2] = self.right_points_up[0] #Agrega los valores al buffer circular
             self.left_points_up_arr[self.indice_ultima_posicion_2] = self.left_points_up[0]
-            self.right_points_up_med = int(statistics.median(self.right_points_up_arr))
+            self.right_points_up_med = int(statistics.median(self.right_points_up_arr)) #Calculamos la mediana del buffer con los 10 ultimos puntos
             self.left_points_up_med = int(statistics.median(self.left_points_up_arr))
             self.indice_ultima_posicion_2 += 1
+
             if ((self.right_points_up_med*0.9 < self.right_points_up[0] < self.right_points_up_med*1.1) and (self.left_points_up_med*0.9 < self.left_points_up[0] < self.left_points_up_med*1.1)):
                 self.bocacalleDetectada=False
             
@@ -397,7 +383,7 @@ class VehiculoAutonomo (object):
         upper_green_noche = np.array([80, 230, 140])
         lower_green_dia = np.array([20, 40, 100])
         upper_green_dia = np.array([80, 230, 140])
-        lower_green = np.array([20, 20*self.multiplicadorLuminosidadAmbiente, 100])
+        lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100]) #lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
         upper_green = np.array([80, 230, 140])
         
         #Aplico filtro de color con los parametros ya definidos
@@ -406,14 +392,17 @@ class VehiculoAutonomo (object):
         mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
         #kernel = np.ones((3,3), np.uint8)
         #mask_green_a = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
-        kernel = np.ones((7,7), np.uint8)
-        mask_green_e = cv2.dilate(mask_green, kernel, iterations=1)
-        kernel = np.ones((11,11), np.uint8)
-        mask_green_c = cv2.morphologyEx(mask_green_e, cv2.MORPH_CLOSE, kernel)
-        cv2.imshow('frameResulting', mask_green_c)
-        y, x = np.where(mask_green_e == 255)
+        #kernel = np.ones((7,7), np.uint8)
+        #mask_green_e = cv2.dilate(mask_green, kernel, iterations=1)
+        #kernel = np.ones((11,11), np.uint8)
+        #mask_green_c = cv2.morphologyEx(mask_green_e, cv2.MORPH_CLOSE, kernel)
+        cv2.imshow('frameResulting', mask_green)
+        y, x = np.where(mask_green == 255)
         try:
-            x_mid= statistics.median(x)
+            if len(x) < 100:
+                x_mid = 0
+            else:
+                x_mid= statistics.median(x)
         except:
             x_mid = 0
         x_mid_int=int(round(x_mid))
@@ -423,13 +412,13 @@ class VehiculoAutonomo (object):
         # Si detecto la bocacalle me preparo para doblar o seguir, esta bandera se limpia sola cuando terminamos de cruzar
         if self.bocacalleDetectada:
             if (self.depositoHallado == self.depositoABuscar) and (self.depositoHallado != -1):
-                self._moverVehiculoEnLineaVerde()
+                self._moverVehiculoEnLineaVerde() #Doblar
             elif (self.depositoHallado != self.depositoABuscar) and (self.depositoHallado != -1):
-                self._moverVehiculoCruzarBocacalle()
+                self._moverVehiculoCruzarBocacalle() #Seguir derecho
 
         # Si no detecto bocacalle estoy girando en la linea verde nuevamente o recien comenzando el programa
         else:
-            self._moverVehiculoEnLineaVerde()
+            self._moverVehiculoEnLineaVerde() #Sigue derecho
         
     def _moverVehiculoEnLineaVerde(self):
 
@@ -553,6 +542,7 @@ class VehiculoAutonomo (object):
 
                     # Busco constantemente la bocacalle y su fin
                     self._detectarBocacalle()
+                    # self.bocacalleDetectada = False
 
                     # En base a los resultados de self._detectarBocacalle() decido si seguir la linea verde o cruzar la bocacalle
                     self._tomarDecisionMovimiento()
@@ -560,7 +550,7 @@ class VehiculoAutonomo (object):
                     # Mostrar grilla
                     self._dibujarGrilla()
                     # Display the resulting frame
-                    cv2.imshow('frameResulting', self.frameProcesado)
+                    #cv2.imshow('frameResulting', self.frameProcesado)
 
                     # Press Q on keyboard to  exit
                     key = cv2.waitKey(10)
