@@ -381,7 +381,7 @@ class VehiculoAutonomo (object):
     def _detectarLineaVerde(self):
         #Corto el frame
         frame = self.frameProcesado
-        frame = frame[100:320,0:int(self.width)] #100 320
+        frame = frame[260:480,0:int(self.width)] #100 320
         #Defino parametros HSV para detectar color verde 
         lower_green_noche = np.array([20, 60, 100])
         upper_green_noche = np.array([80, 230, 140])
