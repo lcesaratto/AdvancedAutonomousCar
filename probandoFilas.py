@@ -30,6 +30,6 @@ while cap.isOpened():
         if key == ord('q') or key == ord('Q'):
             break
 
-    cap.release()
-    # Closes all the frames
-    cv2.destroyAllWindows()
+cap.release()
+# Closes all the frames
+cv2.destroyAllWindows()
