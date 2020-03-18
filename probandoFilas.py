@@ -16,7 +16,7 @@ while cap.isOpened():
                 frameOriginalCut[:,:,2] = frameOriginalCut[:,:,2] + 30
                 for x in range(40): #filas
                     for j in range(40): #columnas
-                        frame[200-fila*40+x][0+40*columna+j] = frameOriginalCut[x][j]
+                        frame[200-row*40+x][0+40*column+j] = frameOriginalCut[x][j]
 
         dx, dy = 40,40
         # Custom (rgb) grid color
