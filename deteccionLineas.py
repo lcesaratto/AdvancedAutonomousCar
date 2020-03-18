@@ -14,7 +14,7 @@ class VehiculoAutonomo (object):
         # Frame con el que trabajan todos los metodos
         self.frameProcesado = []
         # Especificamos mediante los siguientes array que porciones de frame procesar
-        self.filasDeseadas = [2]
+        self.filasDeseadas = [1]
         self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
         # Variables y banderas utilizadas cuando se detecta la bocacalle
         self.bocacalleDetectada=False
@@ -192,32 +192,32 @@ class VehiculoAutonomo (object):
 
     def _analizarFrameForFilasColumnas(self, frame):
         # Cortamos el frame a la mitad inferior
-        frameOriginalRecortado = self._prepararFrame(frame)
+        # frameOriginalRecortado = self._prepararFrame(frame)
         # Aplicamos filtros, entre ellos canny
-        frameOriginalRecortadoConFiltro = self._aplicarFiltrosMascaras(frameOriginalRecortado)
-        # cv2.imshow('frameParaProbar', frameOriginalRecortadoConFiltro)
+        frameConFiltro = self._aplicarFiltrosMascaras(frame)
+        # cv2.imshow('frameParaProbar', frameConFiltro)
 
         # Aca solo creo un numpy array con las mismas dimensiones que el frame original recortado
-        self.frameProcesado = frameOriginalRecortado
+        self.frameProcesado = frame
 
         # Analizo con hough las filas o columnas 
         for fila in self.filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
             # for columna in range(16):
             for columna in self.columnasDeseadas:
-                porcionFrameOriginalConFiltro, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameOriginalRecortadoConFiltro, fila, columna)
-                porcionFrameProcesado = self._procesarPorcionFrame(porcionFrameOriginalConFiltro, porcionFrameOriginal, fila, columna) #ToDo: si comentamos la linea que reconstruye el retorno no es necesario
+                porcionFrameConFiltro, porcionFrame = self._obtenerPorcionesFrame(frame, frameConFiltro, fila, columna)
+                porcionFrameProcesado = self._procesarPorcionFrame(porcionFrameConFiltro, porcionFrame, fila, columna) #ToDo: si comentamos la linea que reconstruye el retorno no es necesario
                 # self._reconstruirFrame(porcionFrameProcesado, fila, columna)
         # for columna in self.columnasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
         #     for fila in range(6):
         #         if fila not in self.filasDeseadas:
-        #             porcionFrame, porcionFrameOriginal = self._obtenerPorcionesFrame(frameOriginalRecortado, frameOriginalRecortadoConFiltro, fila, columna)
-        #             porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrameOriginal, fila, columna)
+        #             porcionFrame, porcionFrame = self._obtenerPorcionesFrame(frame, frameConFiltro, fila, columna)
+        #             porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrame, fila, columna)
         #             self._reconstruirFrame(porcionFrameProcesado, fila, columna)
 
-    def _prepararFrame (self, frame):
-        # frame = cv2.flip(frame, flipCode=-1)
-        frame = frame[int(self.height*0.5):int(self.height),0:int(self.width)]#frame = frame[0:int(self.height*0.5),0:int(self.width)]
-        return frame
+    # def _prepararFrame (self, frame):
+    #     # frame = cv2.flip(frame, flipCode=-1)
+    #     frame = frame[int(self.height*0.5):int(self.height),0:int(self.width)]#frame = frame[0:int(self.height*0.5),0:int(self.width)]
+    #     return frame
 
     def _aplicarFiltrosMascaras (self, frame):
         #Defino parametros HLS o HSV para eliminar fondo 
@@ -260,17 +260,17 @@ class VehiculoAutonomo (object):
         #cv2.imshow('framefilter', canny_right)
         return canny_right
 
-    def _obtenerPorcionesFrame (self, frameOriginal, frameOriginalConFiltro, row, column):
-        frameOriginalConFiltroCut=frameOriginalConFiltro[(200-row*40):(240-row*40),(40*column):(40+40*column)]
-        frameOriginalCut=frameOriginal[(200-row*40):(240-row*40),(40*column):(40+40*column)]
-        return frameOriginalConFiltroCut, frameOriginalCut
+    def _obtenerPorcionesFrame (self, frame, frameConFiltro, row, column):
+        frameConFiltroCut=frameConFiltro[(440-row*40):(480-row*40),(40*column):(40+40*column)]
+        frameCut=frame[(440-row*40):(480-row*40),(40*column):(40+40*column)]
+        return frameConFiltroCut, frameCut
 
-    def _procesarPorcionFrame (self, porcionFrameOriginalConFiltro, porcionFrameOriginal, fila, columna):
+    def _procesarPorcionFrame (self, porcionFrameConFiltro, porcionFrame, fila, columna):
 
         try:
-            # porcionFrameOriginal = canny_right
+            # porcionFrame = canny_right
             ## Aplico Transformada de Hough
-            lines = cv2.HoughLinesP(porcionFrameOriginalConFiltro, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
+            lines = cv2.HoughLinesP(porcionFrameConFiltro, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
 
             # Draw lines on the image
             if lines is not None:
@@ -278,7 +278,7 @@ class VehiculoAutonomo (object):
                 # print(cant_lineas)
                 
                 if cant_lineas>100: # print('Se detecto una curva')
-                    porcionFrameOriginal[:,:,2] = porcionFrameOriginal[:,:,2] + 30 #Pintamos de color rojo las porciones con curvas
+                    porcionFrame[:,:,2] = porcionFrame[:,:,2] + 30 #Pintamos de color rojo las porciones con curvas
                 else: # print('Se detecto una linea')
                     x1M=0
                     x1M_2=0
@@ -287,19 +287,19 @@ class VehiculoAutonomo (object):
                     for line in lines:
                         x1, y1, x2, y2 = line[0]
 
-                        if(x1>x1M and fila==2):
+                        if(x1>x1M and fila==1):
                             x1M=x1
                             self.right_points_up = [x1+40*columna, y1+40*(5-fila)]
                             self.right_points_down = [x2, y2]
-                        if(columna<7 and fila==2):
+                        if(columna<7 and fila==1):
                             # print(x1+40*column)
                             self.left_points_up = [x1+40*columna, y1+40*(5-fila)]
                             self.left_points_down = [x2, y2]
-                        if(x1>x1M_2 and fila==5):
+                        if(x1>x1M_2 and fila==10):
                             x1M_2=x1
                             self.right_points_up_2 = [x1+40*columna, y1+40*(5-fila)]
                             self.right_points_down_2 = [x2, y2]
-                        if(columna<7 and fila==5):
+                        if(columna<7 and fila==10):
                             # print(x1+40*column)
                             self.left_points_up_2 = [x1+40*columna, y1+40*(5-fila)]
                             self.left_points_down_2 = [x2, y2] 
@@ -314,17 +314,17 @@ class VehiculoAutonomo (object):
                         # x1m=x1
                         # right_points = [(x1,y1), (x2,y2)]
 
-                        cv2.line(porcionFrameOriginal,(x1,y1),(x2,y2),(0,0,255),2) # ToDo: Comentar esta linea
-                        # cv2.line(porcionFrameOriginal,(porcionFrameOriginal.shape[1]-1,x1),(0,y1),255,2)
+                        cv2.line(porcionFrame,(x1,y1),(x2,y2),(0,0,255),2) # ToDo: Comentar esta linea
+                        # cv2.line(porcionFrame,(porcionFrame.shape[1]-1,x1),(0,y1),255,2)
 
                     # ToDO: comentar las dos lineas siguientes que pintan porciones de frame
-                    porcionFrameOriginal[:,:,0] = porcionFrameOriginal[:,:,0]+30 #Si se detecto una linea pintar el frame de color azul
+                    porcionFrame[:,:,0] = porcionFrame[:,:,0]+30 #Si se detecto una linea pintar el frame de color azul
             else:
-                porcionFrameOriginal[:,:,1] = porcionFrameOriginal[:,:,1] + 30 #Si no se detecto ninguna linea, pintamos de color verde  
+                porcionFrame[:,:,1] = porcionFrame[:,:,1] + 30 #Si no se detecto ninguna linea, pintamos de color verde  
 
         except Exception as e:
             print(e)
-        return porcionFrameOriginal # ToDo: Este retorno no es mas necesario en la version final
+        return porcionFrame # ToDo: Este retorno no es mas necesario en la version final
 
     def _reconstruirFrame(self, porcionFrameProcesado, fila, columna):
         for x in range(40): #filas
@@ -341,6 +341,8 @@ class VehiculoAutonomo (object):
 
         dist_line_down = self.right_points_up[0] - self.left_points_up[0]
         dist_line_up = self.right_points_up_2[0] - self.left_points_up_2[0]
+
+        print('dist_line_down: ', dist_line_down)
             
         if ((dist_line_down > 200)): #Si en la fila inferior de la camara, la distancia entre las lineas negras laterales es mayor a 200
             if not self.bocacalleDetectada: #Y la bandera no esta seteada aun
@@ -348,13 +350,13 @@ class VehiculoAutonomo (object):
                 self.left_points_up_last = self.left_points_up_med 
             self.bocacalleDetectada=True #Seteamos la bandera
             # ToDo: Aca podemos setear la fila superior como la deseada
-            self.filasDeseadas = [2,5]
+            self.filasDeseadas = [1,10]
             if dist_line_up < 200: #Si la distancia entre lineas negras en la fila superior de la camara, es menor a 200, ya encontro la proxima calle
                 self.right_points_up_last = self.right_points_up_2[0] #Voy guardando los puntos superiores
                 self.left_points_up_last = self.left_points_up_2[0]
 
         else: #Si no se detecto bocacalle todavia
-            self.filasDeseadas = [2]
+            self.filasDeseadas = [1]
             if (self.indice_ultima_posicion_2 is 10): #Resetea el indice del buffer circular
                 self.indice_ultima_posicion_2 = 0
             self.right_points_up_arr[self.indice_ultima_posicion_2] = self.right_points_up[0] #Agrega los valores al buffer circular

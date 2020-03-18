@@ -4,7 +4,7 @@ cap = cv2.VideoCapture(0)
 width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
 height = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
-filasDeseadas = [2,5]
+filasDeseadas = [1,10]
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -12,11 +12,11 @@ while cap.isOpened():
 
         for row in filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
             for column in range(16):
-                frameOriginalCut=frame[(200-row*40):(240-row*40),(40*column):(40+40*column)]
+                frameOriginalCut=frame[(440-row*40):(480-row*40),(40*column):(40+40*column)]
                 frameOriginalCut[:,:,2] = frameOriginalCut[:,:,2] + 30
                 for x in range(40): #filas
                     for j in range(40): #columnas
-                        frame[200-row*40+x][0+40*column+j] = frameOriginalCut[x][j]
+                        frame[400-row*40+x][0+40*column+j] = frameOriginalCut[x][j]
 
         dx, dy = 40,40
         # Custom (rgb) grid color
