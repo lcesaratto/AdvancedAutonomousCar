@@ -344,14 +344,14 @@ class VehiculoAutonomo (object):
 
         print('dist_line_down: ', dist_line_down)
             
-        if ((dist_line_down > 200)): #Si en la fila inferior de la camara, la distancia entre las lineas negras laterales es mayor a 200
+        if ((dist_line_down > 250)): #Si en la fila inferior de la camara, la distancia entre las lineas negras laterales es mayor a 200
             if not self.bocacalleDetectada: #Y la bandera no esta seteada aun
                 self.right_points_up_last = self.right_points_up_med #Guarda el ultimo valor de la mediana cuando entra en bocacalle por unica vez
                 self.left_points_up_last = self.left_points_up_med 
             self.bocacalleDetectada=True #Seteamos la bandera
             # ToDo: Aca podemos setear la fila superior como la deseada
             self.filasDeseadas = [1,10]
-            if dist_line_up < 200: #Si la distancia entre lineas negras en la fila superior de la camara, es menor a 200, ya encontro la proxima calle
+            if dist_line_up < 250: #Si la distancia entre lineas negras en la fila superior de la camara, es menor a 200, ya encontro la proxima calle
                 self.right_points_up_last = self.right_points_up_2[0] #Voy guardando los puntos superiores
                 self.left_points_up_last = self.left_points_up_2[0]
 
@@ -416,7 +416,7 @@ class VehiculoAutonomo (object):
         # Si detecto la bocacalle me preparo para doblar o seguir, esta bandera se limpia sola cuando terminamos de cruzar
         if self.bocacalleDetectada:
             if (self.depositoHallado == self.depositoABuscar) and (self.depositoHallado != -1):
-                self._moverVehiculoEnLineaVerde() #Doblar
+                self._moverVehiculoEnLineaVerde() #Doblarp
             elif (self.depositoHallado != self.depositoABuscar) and (self.depositoHallado != -1):
                 self._moverVehiculoCruzarBocacalle() #Seguir derecho
 
