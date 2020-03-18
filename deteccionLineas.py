@@ -348,11 +348,13 @@ class VehiculoAutonomo (object):
                 self.left_points_up_last = self.left_points_up_med 
             self.bocacalleDetectada=True #Seteamos la bandera
             # ToDo: Aca podemos setear la fila superior como la deseada
+            self.filasDeseadas = [2,5]
             if dist_line_up < 200: #Si la distancia entre lineas negras en la fila superior de la camara, es menor a 200, ya encontro la proxima calle
                 self.right_points_up_last = self.right_points_up_2[0] #Voy guardando los puntos superiores
                 self.left_points_up_last = self.left_points_up_2[0]
 
         else: #Si no se detecto bocacalle todavia
+            self.filasDeseadas = [2]
             if (self.indice_ultima_posicion_2 is 10): #Resetea el indice del buffer circular
                 self.indice_ultima_posicion_2 = 0
             self.right_points_up_arr[self.indice_ultima_posicion_2] = self.right_points_up[0] #Agrega los valores al buffer circular
