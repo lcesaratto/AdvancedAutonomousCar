@@ -38,8 +38,7 @@ class VehiculoAutonomo (object):
         # Banderas de prueba
         self.depositoHallado = -1
         self.depositoABuscar = -1
-        self.depositoEncontrado = False
-        self.EstoyEnElInicio = False
+        self.listoParaReiniciar = True
         # Deteccion de objetos
         self.net = self._cargarModelo()
         self.classes = self._cargarClases()
@@ -424,7 +423,7 @@ class VehiculoAutonomo (object):
     def _tomarDecisionMovimiento(self):
         # Si detecto la bocacalle me preparo para doblar o seguir, esta bandera se limpia sola cuando terminamos de cruzar
         if self.bocacalleDetectada:
-            if self.depositoEncontrado:
+            if self.listoParaReiniciar:
                 self._moverVehiculoCruzarBocacalle()
             elif (self.depositoHallado == self.depositoABuscar) and (self.depositoHallado != -1):
                 self._moverVehiculoEnLineaVerde() #Doblar
@@ -499,9 +498,10 @@ class VehiculoAutonomo (object):
         # ToDo: a qr_encontrado falta sacarle la 'F' de fin para compara contra self.depositoABuscar
         if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar:
         # if qr_encontrado == self.depositoABuscar:
+            self.depositoHallado = -1
             stop(self.miPwm)
             cv2.waitKey(15)
-            self.depositoEncontrado = True
+            self.listoParaReiniciar = True
 
     def comenzar(self):
         # En el proximo loop calcularemos la intensidad de luz ambiente para ajustar filtros
@@ -527,76 +527,79 @@ class VehiculoAutonomo (object):
                 self.depositoABuscar = 0 # ToDo: Borrar esta linea
 
                 # Aca corremos la funcion que busca un codigo qr en la imagen para comenzar
-                if not self.EstoyEnElInicio:
-                        qr_encontrado = self._buscar_qr(frameCompleto)
-                        if qr_encontrado[0] == 'P':
-                            self.EstoyEnElInicio = True
+                if self.listoParaReiniciar:
+                    qr_encontrado = self._buscar_qr(frameCompleto)
+                    if qr_encontrado[0] == 'P':
+                        stop(self.miPwm)
+                        self.listoParaReiniciar = False
+                        self.depositoABuscar = -1
+                        self.tiempoDeEsperaInicial = -1
                 else:
                     if self.depositoABuscar == -1:
                         self._leer_qr(frameCompleto)
 
-                    # Si se cumple el tiempo de espera inicial luego de leer el QR, comenzamos a movernos
-                    elif (time.time()-self.tiempoDeEsperaInicial) > 5 and self.tiempoDeEsperaInicial != -1:
-                        tiempoInicialFPS = time.time()
+                # Si se cumple el tiempo de espera inicial luego de leer el QR, comenzamos a movernos
+                if (time.time()-self.tiempoDeEsperaInicial) > 5 and self.tiempoDeEsperaInicial != -1:
+                    tiempoInicialFPS = time.time()
 
-                        # Comenzamos buscando objetos si se detecta la senda peatonal roja
-                        # if False:
-                        if not self.cartelDetectado:
-                            self._detectarRojo(frameCompleto)
-                            if self.RojoDetectado: #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
-                                #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
-                                # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
-                                class_ids = self._buscarObjetos(frameCompleto)
-                                print('Objetos detectados: ', class_ids) # ToDo: Borrar print
-                                if class_ids:
-                                    if 2 in class_ids:
-                                        tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                        self.RojoDetectado = False
-                                        self.cartelDetectado = True
-                                        self.depositoHallado = 0
-                                    elif 3 in class_ids:
-                                        tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                        self.RojoDetectado = False
-                                        self.cartelDetectado = True
-                                        self.depositoHallado = 1
-                        else:
-                            self._detectarRojo(frameCompleto)
-                            if not self.RojoDetectado:
-                                # Espero 10segundos para borrar la bandera de cartel detectado
-                                if (time.time()-tiempoInicialLuegoDeDeteccionCartel) > 10:
-                                    self.cartelDetectado = False
-                        # else:
-                        #     self.cartelDetectado = True
-                        #     self.depositoHallado = 0
-                        
-                        # Aca se aplican todos los filtros al frame, luego hough y se guardan las posiciones de las lineas 
-                        # encontradas para luego utilizar en self._detectarBocacalle()
-                        self._analizarFrameForFilasColumnas(frameCompleto)
-                        
-                        # Busco constantemente el punto central de la linea verde
-                        self._detectarLineaVerde()
+                    # Comenzamos buscando objetos si se detecta la senda peatonal roja
+                    # if False:
+                    if not self.cartelDetectado:
+                        self._detectarRojo(frameCompleto)
+                        if self.RojoDetectado: #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
+                            #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
+                            # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
+                            class_ids = self._buscarObjetos(frameCompleto)
+                            print('Objetos detectados: ', class_ids) # ToDo: Borrar print
+                            if class_ids:
+                                if 2 in class_ids:
+                                    tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                    self.RojoDetectado = False
+                                    self.cartelDetectado = True
+                                    self.depositoHallado = 0
+                                elif 3 in class_ids:
+                                    tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                    self.RojoDetectado = False
+                                    self.cartelDetectado = True
+                                    self.depositoHallado = 1
+                    else:
+                        self._detectarRojo(frameCompleto)
+                        if not self.RojoDetectado:
+                            # Espero 10segundos para borrar la bandera de cartel detectado
+                            if (time.time()-tiempoInicialLuegoDeDeteccionCartel) > 10:
+                                self.cartelDetectado = False
+                    # else:
+                    #     self.cartelDetectado = True
+                    #     self.depositoHallado = 0
+                    
+                    # Aca se aplican todos los filtros al frame, luego hough y se guardan las posiciones de las lineas 
+                    # encontradas para luego utilizar en self._detectarBocacalle()
+                    self._analizarFrameForFilasColumnas(frameCompleto)
+                    
+                    # Busco constantemente el punto central de la linea verde
+                    self._detectarLineaVerde()
 
-                        # Busco constantemente la bocacalle y su fin
-                        self._detectarBocacalle()
-                        # self.bocacalleDetectada = False
+                    # Busco constantemente la bocacalle y su fin
+                    self._detectarBocacalle()
+                    # self.bocacalleDetectada = False
 
-                        # En base a los resultados de self._detectarBocacalle() decido si seguir la linea verde o cruzar la bocacalle
-                        self._tomarDecisionMovimiento()
+                    # En base a los resultados de self._detectarBocacalle() decido si seguir la linea verde o cruzar la bocacalle
+                    self._tomarDecisionMovimiento()
 
-                        self._buscarDeposito(frameCompleto)
+                    self._buscarDeposito(frameCompleto)
 
-                        # Mostrar grilla
-                        # self._dibujarGrilla()
-                        # Display the resulting frame
-                        #cv2.imshow('frameResulting', self.frameProcesado)
+                    # Mostrar grilla
+                    # self._dibujarGrilla()
+                    # Display the resulting frame
+                    #cv2.imshow('frameResulting', self.frameProcesado)
 
-                        # Press Q on keyboard to  exit
-                        key = cv2.waitKey(10)
-                        if key == ord('q') or key == ord('Q'):
-                            stop(self.miPwm)
-                            break
+                    # Press Q on keyboard to  exit
+                    key = cv2.waitKey(10)
+                    if key == ord('q') or key == ord('Q'):
+                        stop(self.miPwm)
+                        break
 
-                        print("FPS: ", (1/(time.time()-tiempoInicialFPS)))
+                    print("FPS: ", (1/(time.time()-tiempoInicialFPS)))
             else: # Break the loop
                 break
 
