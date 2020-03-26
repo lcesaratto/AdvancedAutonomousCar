@@ -116,14 +116,13 @@ if __name__ == "__main__":
 			stop(miPwm)
 			break
 		if keyboard.is_pressed("w"):
-			forward(miPwm)
+			forward(miPwm,2000)
 		if keyboard.is_pressed("a"):
-			giroIzquierda(miPwm)
+			giroIzquierdaBrusco(miPwm,3000,3000)
 		if keyboard.is_pressed("s"):
-			backward(miPwm)
+			backward(miPwm,2000)
 		if keyboard.is_pressed("d"):
-			giroDerecha(miPwm)
-		giroDerecha(miPwm)
+			giroDerechaBrusco(miPwm,3000, 3000)
 		miPwm.set_pwm(0, 0, servo_max)
 		miPwm.set_pwm(4, 0, servo_max)
 		# time.sleep(10)
