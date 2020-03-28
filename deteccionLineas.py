@@ -53,11 +53,14 @@ class VehiculoAutonomo (object):
         self.RojoDetectado = 0
         #Deteccion Linea Verde
         self.ubicacion_punto_verde = 0
+        self.stoppingCounter = 0
         #PWM
         self.miPwm = iniciarPWM() # ToDo: Descomentar esta linea
         self.ultima_distancia = 0
         #Luminosidad Ambiente
         self.multiplicadorLuminosidadAmbiente = 2
+        self.indiceCircular = 0
+        self.arrayCircular = np.zeros(5)
     
     def _abrirCamara (self):
         # Create a VideoCapture object and read from input file
@@ -398,14 +401,15 @@ class VehiculoAutonomo (object):
     def _detectarLineaVerde(self, frame):
         #Corto el frame
         # frame = self.frameProcesado
-        frame = frame[260:480,0:int(self.width)] #100 320
+        frame = frame[400:480,0:int(self.width)] #
         cv2.imshow('FrameOriginalRecortado', frame)
         #Defino parametros HSV para detectar color verde 
         lower_green_noche = np.array([20, 60, 100])
         upper_green_noche = np.array([80, 230, 140])
         lower_green_dia = np.array([20, 40, 100])
         upper_green_dia = np.array([80, 230, 140])
-        lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100]) #lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
+        lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 80]) #lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
+        # lower_green = np.array([40, 50, 80])
         upper_green = np.array([80, 230, 140])
         
         #Aplico filtro de color con los parametros ya definidos
@@ -457,56 +461,65 @@ class VehiculoAutonomo (object):
 
         else:
             distancia_al_centro = (self.width/2) - ubicacion_punto_central
-        
-        #cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
-        #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
-        # print(distancia_al_centro)
-        # vel_brusca_max=3000
-        # vel_brusca_min=2200
-        # vel_suave_max=2200
-        # vel_suave_min=1700
-        vel_brusca_max=2800
-        vel_brusca_min=2300
-        vel_brusca_max_perdido=2800
-        vel_brusca_min_perdido=2800
-        vel_suave_max=1500
-        vel_suave_min=1000
-        vel_forward = 1200
-        if abs(distancia_al_centro) == 320:
-            if self.contandoFramesParado != 10:
-                stop(self.miPwm)
-                print('Parado')
-                self.contandoFramesParado += 1
-                self.contandoFramesBackward = 0
-            #elif self.contandoFramesBackward != 3:
-            else:
-                #backward(self.miPwm, 1700)
-                if self.ultima_distancia <= 0:
-                    print('PERDIDO- Derecha brusco')
-                    giroDerechaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
-                else:
-                    print('PERDIDO- Izquierda brusco')
-                    giroIzquierdaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
-                self.contandoFramesBackward += 1
-                if self.contandoFramesBackward == 3:
-                    self.contandoFramesParado = 0
+
+        self.stoppingCounter +=1
+        if self.stoppingCounter == 1:
+            stop(self.miPwm)
         else:
-            self.contandoFramesParado = 0
-            if distancia_al_centro > 50 and abs(distancia_al_centro) < 200:
-                print("Izquierda Suave")
-                giroIzquierdaSuave(self.miPwm, vel_suave_max, vel_suave_min)
-            elif distancia_al_centro < -50 and abs(distancia_al_centro) < 200:
-                giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
-                print("Derecha Suave")
-            elif 320 > abs(distancia_al_centro) >= 200 and self.ultima_distancia <= 0:
-                    giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
-                    print("Derecha Brusco")
-            elif 320 > abs(distancia_al_centro) >= 200 and self.ultima_distancia > 0:
-                    giroIzquierdaBrusco(self.miPwm, vel_brusca_max,vel_brusca_min)
-                    print("Izquierda Brusco")
+            if self.stoppingCounter == 3:
+                self.stoppingCounter = 0
+        
+            #cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
+            #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
+            # print(distancia_al_centro)
+            # vel_brusca_max=3000
+            # vel_brusca_min=2200
+            # vel_suave_max=2200
+            # vel_suave_min=1700
+            vel_brusca_max=2450
+            vel_brusca_min=1200
+            # vel_brusca_max_perdido=2700
+            # vel_brusca_min_perdido=2600
+            vel_suave_max=2200
+            vel_suave_min=200
+            vel_forward = 1200
+            if abs(distancia_al_centro) == 320:
+                if self.contandoFramesParado != 5:
+                    stop(self.miPwm)
+                    print('Parado')
+                    self.contandoFramesParado += 1
+                    self.contandoFramesBackward = 0
+                #elif self.contandoFramesBackward != 3:
+                else:
+                    backward(self.miPwm, vel_forward)
+                    # if self.ultima_distancia <= 0:
+                    #     print('PERDIDO- Derecha brusco')
+                    #     giroDerechaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
+                    # else:
+                    #     print('PERDIDO- Izquierda brusco')
+                    #     giroIzquierdaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
+                    self.contandoFramesBackward += 1
+                    if self.contandoFramesBackward == 2:
+                        self.contandoFramesParado = 0
             else:
-                forward(self.miPwm, vel_forward)
-        if abs(distancia_al_centro) < 320:
+                self.contandoFramesParado = 0
+                if distancia_al_centro > 50 and abs(distancia_al_centro) < 200:
+                    print("Izquierda Suave")
+                    giroIzquierdaSuave(self.miPwm, vel_suave_max, vel_suave_min)
+                elif distancia_al_centro < -50 and abs(distancia_al_centro) < 200:
+                    giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
+                    print("Derecha Suave")
+                elif 320 > abs(distancia_al_centro) >= 200 and self.ultima_distancia <= 0:
+                        giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
+                        print("Derecha Brusco")
+                elif 320 > abs(distancia_al_centro) >= 200 and self.ultima_distancia > 0:
+                        giroIzquierdaBrusco(self.miPwm, vel_brusca_max,vel_brusca_min)
+                        print("Izquierda Brusco")
+                else:
+                    forward(self.miPwm, vel_forward)
+                    print('forward')
+
+        if abs(distancia_al_centro) < 200:
             self.ultima_distancia = distancia_al_centro
             print(self.ultima_distancia)
 
@@ -518,24 +531,31 @@ class VehiculoAutonomo (object):
     def _buscarDeposito(self, frameCompleto):
         frameMitad = frameCompleto[int(self.height*0.5):int(self.height),0:int(self.width)] #Mitad inferior
         self._buscar_qr(frameMitad)
+
+    def _actualizarValorSaturacion(self, frameCompleto):
+        self.arrayCircular[self.indiceCircular] = self._obtenerLuminosidadAmbiente(frameCompleto)
+        self.indiceCircular += 1
+        if self.indiceCircular == 5:
+            self.indiceCircular = 0
+        self.multiplicadorLuminosidadAmbiente = np.mean(self.arrayCircular)
+        # print(self.multiplicadorLuminosidadAmbiente)
         
 
     def comenzar(self):
         try:
             # En el proximo loop calcularemos la intensidad de luz ambiente para ajustar filtros
-            contadorInicial = 0
-            sumatoriaMultiplicador = 0
             while self.cap.isOpened():
                 ret, frameCompleto = self.cap.read()
                 if ret:
-                    if 1 < contadorInicial < 5:
-                        sumatoriaMultiplicador += self._obtenerLuminosidadAmbiente(frameCompleto)
-                        contadorInicial += 1
-                    elif contadorInicial == 5:
-                        self.multiplicadorLuminosidadAmbiente = sumatoriaMultiplicador/3
+                    if 1 < self.indiceCircular < 7:
+                        self.arrayCircular[self.indiceCircular-2] = self._obtenerLuminosidadAmbiente(frameCompleto)
+                        self.indiceCircular += 1
+                    elif self.indiceCircular == 7:
+                        self.multiplicadorLuminosidadAmbiente = np.mean(self.arrayCircular)
+                        self.indiceCircular = 0
                         break
                     else:
-                        contadorInicial += 1
+                        self.indiceCircular += 1
 
             # Aca comienza el programa automaticamente
             while self.cap.isOpened():
@@ -593,6 +613,8 @@ class VehiculoAutonomo (object):
                         
                         # Aca se aplican todos los filtros al frame, luego hough y se guardan las posiciones de las lineas 
                         # encontradas para luego utilizar en self._detectarBocacalle()
+                        self._actualizarValorSaturacion(frameCompleto)
+
                         self._analizarFrameForFilasColumnas(frameCompleto)
 
                         # Busco constantemente el punto central de la linea verde
@@ -619,7 +641,7 @@ class VehiculoAutonomo (object):
                             stop(self.miPwm)
                             break
 
-                        # print("FPS: ", (1/(time.time()-tiempoInicialFPS)))
+                        print("FPS: ", (1/(time.time()-tiempoInicialFPS)))
                 else: # Break the loop
                     break
 

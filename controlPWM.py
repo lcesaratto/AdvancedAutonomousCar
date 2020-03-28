@@ -44,7 +44,7 @@ def iniciarPWM():
 	    pwm.set_pwm(channel, 0, pulse)'''
 
 	# Set frequency to 60hz, good for servos.
-	pwm.set_pwm_freq(600)
+	pwm.set_pwm_freq(60)
 	return pwm
 
 #Termina funcion init
