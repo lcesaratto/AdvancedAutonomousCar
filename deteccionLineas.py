@@ -54,6 +54,7 @@ class VehiculoAutonomo (object):
         #Deteccion Linea Verde
         self.ubicacion_punto_verde = 0
         self.stoppingCounter = 0
+        self.stoppingCounterMax=2
         #PWM
         self.miPwm = iniciarPWM() # ToDo: Descomentar esta linea
         self.ultima_distancia = 0
@@ -401,14 +402,14 @@ class VehiculoAutonomo (object):
     def _detectarLineaVerde(self, frame):
         #Corto el frame
         # frame = self.frameProcesado
-        frame = frame[400:480,0:int(self.width)] #
+        frame = frame[320:480,0:int(self.width)] #
         cv2.imshow('FrameOriginalRecortado', frame)
         #Defino parametros HSV para detectar color verde 
         lower_green_noche = np.array([20, 60, 100])
         upper_green_noche = np.array([80, 230, 140])
         lower_green_dia = np.array([20, 40, 100])
         upper_green_dia = np.array([80, 230, 140])
-        lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 80]) #lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
+        lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100]) #lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
         # lower_green = np.array([40, 50, 80])
         upper_green = np.array([80, 230, 140])
         
@@ -466,25 +467,22 @@ class VehiculoAutonomo (object):
         if self.stoppingCounter == 1:
             stop(self.miPwm)
         else:
-            if self.stoppingCounter == 3:
+            if self.stoppingCounter >= self.stoppingCounterMax:
                 self.stoppingCounter = 0
         
             #cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
             #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
             # print(distancia_al_centro)
-            # vel_brusca_max=3000
-            # vel_brusca_min=2200
-            # vel_suave_max=2200
-            # vel_suave_min=1700
+
             vel_brusca_max=2450
-            vel_brusca_min=1200
-            # vel_brusca_max_perdido=2700
-            # vel_brusca_min_perdido=2600
-            vel_suave_max=2200
-            vel_suave_min=200
+            vel_brusca_min=1000
+            # vel_brusca_max_perdido=2500
+            # vel_brusca_min_perdido=1400
+            vel_suave_max=2000
+            vel_suave_min=400
             vel_forward = 1200
             if abs(distancia_al_centro) == 320:
-                if self.contandoFramesParado != 5:
+                if self.contandoFramesParado != 3:
                     stop(self.miPwm)
                     print('Parado')
                     self.contandoFramesParado += 1
@@ -499,23 +497,28 @@ class VehiculoAutonomo (object):
                     #     print('PERDIDO- Izquierda brusco')
                     #     giroIzquierdaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
                     self.contandoFramesBackward += 1
-                    if self.contandoFramesBackward == 2:
+                    if self.contandoFramesBackward == 1:
                         self.contandoFramesParado = 0
             else:
+                limite1 = 60
+                limite2 = 150
+                distancia_al_centro -= 11
                 self.contandoFramesParado = 0
-                if distancia_al_centro > 50 and abs(distancia_al_centro) < 200:
+                self.stoppingCounterMax = 2
+                if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
                     print("Izquierda Suave")
                     giroIzquierdaSuave(self.miPwm, vel_suave_max, vel_suave_min)
-                elif distancia_al_centro < -50 and abs(distancia_al_centro) < 200:
+                elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
                     giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
                     print("Derecha Suave")
-                elif 320 > abs(distancia_al_centro) >= 200 and self.ultima_distancia <= 0:
+                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
                         giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
                         print("Derecha Brusco")
-                elif 320 > abs(distancia_al_centro) >= 200 and self.ultima_distancia > 0:
+                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
                         giroIzquierdaBrusco(self.miPwm, vel_brusca_max,vel_brusca_min)
                         print("Izquierda Brusco")
                 else:
+                    self.stoppingCounterMax = 3
                     forward(self.miPwm, vel_forward)
                     print('forward')
 
