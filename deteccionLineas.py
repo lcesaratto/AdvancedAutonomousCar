@@ -39,7 +39,7 @@ class VehiculoAutonomo (object):
         # Banderas de prueba
         self.depositoHallado = -1
         self.depositoABuscar = -1
-        self.listoParaReiniciar = True
+        self.listoParaReiniciar = False
         # Deteccion de objetos
         self.net = self._cargarModelo()
         self.classes = self._cargarClases()
@@ -108,8 +108,8 @@ class VehiculoAutonomo (object):
             cv2.destroyWindow('buscandoQR')
             barcodeData = barcodes[0].data.decode("utf-8")
             if barcodeData[0] == 'I':
-                print("Deposito a buscar: ", barcodeData)
-                self.depositoABuscar = 0
+                print("Deposito a buscar: ", barcodeData[1])
+                self.depositoABuscar = barcodeData[1]
                 self.tiempoDeEsperaInicial = time.time()
 
     def _buscar_qr(self, frame):
@@ -119,6 +119,7 @@ class VehiculoAutonomo (object):
             # ToDo: a qr_encontrado falta sacarle la 'F' de fin para compara contra self.depositoABuscar
             if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar:
             # if qr_encontrado == self.depositoABuscar:
+                print('Dejando paquete!!')
                 self.depositoHallado = -1
                 stop(self.miPwm)
                 cv2.waitKey(15)
@@ -484,7 +485,7 @@ class VehiculoAutonomo (object):
             if abs(distancia_al_centro) == 320:
                 if self.contandoFramesParado != 3:
                     stop(self.miPwm)
-                    print('Parado')
+                    # print('Parado')
                     self.contandoFramesParado += 1
                     self.contandoFramesBackward = 0
                 #elif self.contandoFramesBackward != 3:
@@ -504,27 +505,30 @@ class VehiculoAutonomo (object):
                 limite2 = 150
                 distancia_al_centro -= 11
                 self.contandoFramesParado = 0
-                self.stoppingCounterMax = 2
                 if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
-                    print("Izquierda Suave")
+                    # print("Izquierda Suave")
+                    self.stoppingCounterMax = 5
                     giroIzquierdaSuave(self.miPwm, vel_suave_max, vel_suave_min)
                 elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
                     giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
-                    print("Derecha Suave")
+                    # print("Derecha Suave")
+                    self.stoppingCounterMax = 5
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
                         giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
-                        print("Derecha Brusco")
+                        # print("Derecha Brusco")
+                        self.stoppingCounterMax = 2
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
                         giroIzquierdaBrusco(self.miPwm, vel_brusca_max,vel_brusca_min)
-                        print("Izquierda Brusco")
+                        # print("Izquierda Brusco")
+                        self.stoppingCounterMax = 2
                 else:
-                    self.stoppingCounterMax = 3
+                    self.stoppingCounterMax = 5
                     forward(self.miPwm, vel_forward)
-                    print('forward')
+                    # print('forward')
 
         if abs(distancia_al_centro) < 200:
             self.ultima_distancia = distancia_al_centro
-            print(self.ultima_distancia)
+            # print(self.ultima_distancia)
 
     def _moverVehiculoCruzarBocacalle(self):
         print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
@@ -533,7 +537,7 @@ class VehiculoAutonomo (object):
 
     def _buscarDeposito(self, frameCompleto):
         frameMitad = frameCompleto[int(self.height*0.5):int(self.height),0:int(self.width)] #Mitad inferior
-        self._buscar_qr(frameMitad)
+        self._buscar_qr(frameCompleto)
 
     def _actualizarValorSaturacion(self, frameCompleto):
         self.arrayCircular[self.indiceCircular] = self._obtenerLuminosidadAmbiente(frameCompleto)
@@ -545,121 +549,122 @@ class VehiculoAutonomo (object):
         
 
     def comenzar(self):
-        try:
-            # En el proximo loop calcularemos la intensidad de luz ambiente para ajustar filtros
-            while self.cap.isOpened():
-                ret, frameCompleto = self.cap.read()
-                if ret:
-                    if 1 < self.indiceCircular < 7:
-                        self.arrayCircular[self.indiceCircular-2] = self._obtenerLuminosidadAmbiente(frameCompleto)
-                        self.indiceCircular += 1
-                    elif self.indiceCircular == 7:
-                        self.multiplicadorLuminosidadAmbiente = np.mean(self.arrayCircular)
-                        self.indiceCircular = 0
-                        break
-                    else:
-                        self.indiceCircular += 1
-
-            # Aca comienza el programa automaticamente
-            while self.cap.isOpened():
-                ret, frameCompleto = self.cap.read()
-                if ret:
-                    self.tiempoDeEsperaInicial = 0 # ToDo: Borrar esta linea
-                    self.depositoABuscar = 0 # ToDo: Borrar esta linea
-                    self.listoParaReiniciar = False
-
-                    # Aca corremos la funcion que busca un codigo qr en la imagen para comenzar
-                    if self.listoParaReiniciar:
-                        qr_encontrado = self._buscar_qr(frameCompleto)
-                        if qr_encontrado[0] == 'P':
-                            stop(self.miPwm)
-                            self.listoParaReiniciar = False
-                            self.depositoABuscar = -1
-                            self.tiempoDeEsperaInicial = -1
-                    else:
-                        if self.depositoABuscar == -1:
-                            self._leer_qr(frameCompleto)
-                    
-                    # Si se cumple el tiempo de espera inicial luego de leer el QR, comenzamos a movernos
-                    if (time.time()-self.tiempoDeEsperaInicial) > 5 and self.tiempoDeEsperaInicial != -1:
-                        tiempoInicialFPS = time.time()
-
-                        # Comenzamos buscando objetos si se detecta la senda peatonal roja
-                        if False:
-                            if not self.cartelDetectado:
-                                self._detectarRojo(frameCompleto)
-                                if self.RojoDetectado: #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
-                                    #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
-                                    # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
-                                    class_ids = self._buscarObjetos(frameCompleto)
-                                    print('Objetos detectados: ', class_ids) # ToDo: Borrar print
-                                    if class_ids:
-                                        if 2 in class_ids:
-                                            tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                            self.RojoDetectado = False
-                                            self.cartelDetectado = True
-                                            self.depositoHallado = 0
-                                        elif 3 in class_ids:
-                                            tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                            self.RojoDetectado = False
-                                            self.cartelDetectado = True
-                                            self.depositoHallado = 1
-                            else:
-                                self._detectarRojo(frameCompleto)
-                                if not self.RojoDetectado:
-                                    # Espero 10segundos para borrar la bandera de cartel detectado
-                                    if (time.time()-tiempoInicialLuegoDeDeteccionCartel) > 10:
-                                        self.cartelDetectado = False
-                        else:
-                            self.cartelDetectado = True
-                            self.depositoHallado = 0
-                        
-                        # Aca se aplican todos los filtros al frame, luego hough y se guardan las posiciones de las lineas 
-                        # encontradas para luego utilizar en self._detectarBocacalle()
-                        self._actualizarValorSaturacion(frameCompleto)
-
-                        self._analizarFrameForFilasColumnas(frameCompleto)
-
-                        # Busco constantemente el punto central de la linea verde
-                        self._detectarLineaVerde(frameCompleto)
-
-                        # Busco constantemente la bocacalle y su fin
-                        self._detectarBocacalle()
-
-                        # self.bocacalleDetectada = False
-
-                        # En base a los resultados de self._detectarBocacalle() decido si seguir la linea verde o cruzar la bocacalle
-                        self._tomarDecisionMovimiento()
-
-                        self._buscarDeposito(frameCompleto)
-
-                        # Mostrar grilla
-                        # self._dibujarGrilla()
-                        # Display the resulting frame
-                        #cv2.imshow('frameResulting', self.frameProcesado)
-
-                        # Press Q on keyboard to  exit
-                        key = cv2.waitKey(10)
-                        if key == ord('q') or key == ord('Q'):
-                            stop(self.miPwm)
-                            break
-
-                        print("FPS: ", (1/(time.time()-tiempoInicialFPS)))
-                else: # Break the loop
+        # try:
+        # En el proximo loop calcularemos la intensidad de luz ambiente para ajustar filtros
+        while self.cap.isOpened():
+            ret, frameCompleto = self.cap.read()
+            if ret:
+                if 1 < self.indiceCircular < 7:
+                    self.arrayCircular[self.indiceCircular-2] = self._obtenerLuminosidadAmbiente(frameCompleto)
+                    self.indiceCircular += 1
+                elif self.indiceCircular == 7:
+                    self.multiplicadorLuminosidadAmbiente = np.mean(self.arrayCircular)
+                    self.indiceCircular = 0
                     break
+                else:
+                    self.indiceCircular += 1
 
-            # When everything done, release the video capture object
-            self.cap.release()
-            # Closes all the frames
-            cv2.destroyAllWindows()
-            exit()
-        
-        except Exception as e:
-            print(e)
-            self.cap.release()
-            cv2.destroyAllWindows()
-            stop(self.miPwm)
-            exit()
+        # Aca comienza el programa automaticamente
+        while self.cap.isOpened():
+            ret, frameCompleto = self.cap.read()
+            if ret:
+                # self.tiempoDeEsperaInicial = 0 # ToDo: Borrar esta linea
+                # self.depositoABuscar = 0 # ToDo: Borrar esta linea
+                # self.listoParaReiniciar = False
+
+                # Aca corremos la funcion que busca un codigo qr en la imagen para comenzar
+                if self.listoParaReiniciar:
+                    qr_encontrado = self._buscar_qr(frameCompleto)
+                    if qr_encontrado[0] == 'P':
+                        print("inicio hallado")
+                        stop(self.miPwm)
+                        self.listoParaReiniciar = False
+                        self.depositoABuscar = -1
+                        self.tiempoDeEsperaInicial = -1
+                else:
+                    if self.depositoABuscar == -1:
+                        self._leer_qr(frameCompleto)
+                
+                # Si se cumple el tiempo de espera inicial luego de leer el QR, comenzamos a movernos
+                if (time.time()-self.tiempoDeEsperaInicial) > 5 and self.tiempoDeEsperaInicial != -1:
+                    tiempoInicialFPS = time.time()
+
+                    # Comenzamos buscando objetos si se detecta la senda peatonal roja
+                    if False:
+                        if not self.cartelDetectado:
+                            self._detectarRojo(frameCompleto)
+                            if self.RojoDetectado: #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
+                                #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
+                                # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
+                                class_ids = self._buscarObjetos(frameCompleto)
+                                print('Objetos detectados: ', class_ids) # ToDo: Borrar print
+                                if class_ids:
+                                    if 2 in class_ids:
+                                        tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                        self.RojoDetectado = False
+                                        self.cartelDetectado = True
+                                        self.depositoHallado = 0
+                                    elif 3 in class_ids:
+                                        tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                        self.RojoDetectado = False
+                                        self.cartelDetectado = True
+                                        self.depositoHallado = 1
+                        else:
+                            self._detectarRojo(frameCompleto)
+                            if not self.RojoDetectado:
+                                # Espero 10segundos para borrar la bandera de cartel detectado
+                                if (time.time()-tiempoInicialLuegoDeDeteccionCartel) > 10:
+                                    self.cartelDetectado = False
+                    else:
+                        self.cartelDetectado = True
+                        self.depositoHallado = '1'
+                    
+                    # Aca se aplican todos los filtros al frame, luego hough y se guardan las posiciones de las lineas 
+                    # encontradas para luego utilizar en self._detectarBocacalle()
+                    self._actualizarValorSaturacion(frameCompleto)
+
+                    self._analizarFrameForFilasColumnas(frameCompleto)
+
+                    # Busco constantemente el punto central de la linea verde
+                    self._detectarLineaVerde(frameCompleto)
+
+                    # Busco constantemente la bocacalle y su fin
+                    self._detectarBocacalle()
+
+                    # self.bocacalleDetectada = False
+
+                    # En base a los resultados de self._detectarBocacalle() decido si seguir la linea verde o cruzar la bocacalle
+                    self._tomarDecisionMovimiento()
+
+                    self._buscarDeposito(frameCompleto)
+
+                    # Mostrar grilla
+                    # self._dibujarGrilla()
+                    # Display the resulting frame
+                    #cv2.imshow('frameResulting', self.frameProcesado)
+
+                    # Press Q on keyboard to  exit
+                    key = cv2.waitKey(10)
+                    if key == ord('q') or key == ord('Q'):
+                        stop(self.miPwm)
+                        break
+
+                    # print("FPS: ", (1/(time.time()-tiempoInicialFPS)))
+            else: # Break the loop
+                break
+
+        # When everything done, release the video capture object
+        self.cap.release()
+        # Closes all the frames
+        cv2.destroyAllWindows()
+        exit()
+    
+        # except Exception as e:
+        #     print(e)
+        #     self.cap.release()
+        #     cv2.destroyAllWindows()
+        #     stop(self.miPwm)
+        #     exit()
 
 if __name__ == "__main__":
     vehiculoAutonomo = VehiculoAutonomo()
