@@ -117,13 +117,19 @@ class VehiculoAutonomo (object):
         if barcodes:
             qr_encontrado = barcodes[0].data.decode("utf-8")
             # ToDo: a qr_encontrado falta sacarle la 'F' de fin para compara contra self.depositoABuscar
-            if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar:
+            if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar and not self.listoParaReiniciar:
             # if qr_encontrado == self.depositoABuscar:
                 print('Dejando paquete!!')
                 self.depositoHallado = -1
                 stop(self.miPwm)
-                cv2.waitKey(15)
+                cv2.waitKey(15000)
                 self.listoParaReiniciar = True
+            if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
+                print("inicio hallado")
+                stop(self.miPwm)
+                self.listoParaReiniciar = False
+                self.tiempoDeEsperaInicial = -1
+                self.depositoABuscar = -1
 
     def _detectarRojo(self,frame):
         #Defino parametros HSV para detectar color rojo 
@@ -228,7 +234,7 @@ class VehiculoAutonomo (object):
             for columna in self.columnasDeseadas:
                 porcionFrameConFiltro, porcionFrame = self._obtenerPorcionesFrame(frame, frameConFiltro, fila, columna)
                 porcionFrameProcesado = self._procesarPorcionFrame(porcionFrameConFiltro, porcionFrame, fila, columna) #ToDo: si comentamos la linea que reconstruye el retorno no es necesario
-                # self._reconstruirFrame(porcionFrameProcesado, fila, columna)
+                self._reconstruirFrame(porcionFrameProcesado, fila, columna)
         # for columna in self.columnasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
         #     for fila in range(6):
         #         if fila not in self.filasDeseadas:
@@ -336,7 +342,7 @@ class VehiculoAutonomo (object):
                         # x1m=x1
                         # right_points = [(x1,y1), (x2,y2)]
 
-                        cv2.line(porcionFrame,(x1,y1),(x2,y2),(0,0,255),2) # ToDo: Comentar esta linea
+                        # cv2.line(porcionFrame,(x1,y1),(x2,y2),(0,0,255),2) # ToDo: Comentar esta linea
                         # cv2.line(porcionFrame,(porcionFrame.shape[1]-1,x1),(0,y1),255,2)
 
                     # ToDO: comentar las dos lineas siguientes que pintan porciones de frame
@@ -354,26 +360,27 @@ class VehiculoAutonomo (object):
                 self.frameProcesado[200-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
 
     def _detectarBocacalle(self):
-        # if self.bocacalleDetectada:
-        #     cv2.line(self.frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
-        # else:
-        #     cv2.line(self.frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
+        if self.bocacalleDetectada:
+            cv2.line(self.frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
+        else:
+            cv2.line(self.frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
 
         # cv2.line(self.frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
 
         dist_line_down = self.right_points_up[0] - self.left_points_up[0]
         dist_line_up = self.right_points_up_2[0] - self.left_points_up_2[0]
 
-        # print('dist_line_down: ', dist_line_down)
+        print('dist_line_down: ', dist_line_down)
             
-        if ((dist_line_down > 250)): #Si en la fila inferior de la camara, la distancia entre las lineas negras laterales es mayor a 200
+        if ((dist_line_down > 350)): #Si en la fila inferior de la camara, la distancia entre las lineas negras laterales es mayor a 200
             if not self.bocacalleDetectada: #Y la bandera no esta seteada aun
                 self.right_points_up_last = self.right_points_up_med #Guarda el ultimo valor de la mediana cuando entra en bocacalle por unica vez
                 self.left_points_up_last = self.left_points_up_med 
+            print('BOCACALLE DETECTADA!')
             self.bocacalleDetectada=True #Seteamos la bandera
             # ToDo: Aca podemos setear la fila superior como la deseada
             self.filasDeseadas = [1,10]
-            if dist_line_up < 250: #Si la distancia entre lineas negras en la fila superior de la camara, es menor a 200, ya encontro la proxima calle
+            if dist_line_up < 270: #Si la distancia entre lineas negras en la fila superior de la camara, es menor a 200, ya encontro la proxima calle
                 self.right_points_up_last = self.right_points_up_2[0] #Voy guardando los puntos superiores
                 self.left_points_up_last = self.left_points_up_2[0]
 
@@ -388,6 +395,7 @@ class VehiculoAutonomo (object):
             self.indice_ultima_posicion_2 += 1
 
             if ((self.right_points_up_med*0.9 < self.right_points_up[0] < self.right_points_up_med*1.1) and (self.left_points_up_med*0.9 < self.left_points_up[0] < self.left_points_up_med*1.1)):
+                print('CALLE DETECTADA!')
                 self.bocacalleDetectada=False
             
     def _dibujarGrilla(self):
@@ -480,8 +488,8 @@ class VehiculoAutonomo (object):
             # vel_brusca_max_perdido=2500
             # vel_brusca_min_perdido=1400
             vel_suave_max=2000
-            vel_suave_min=400
-            vel_forward = 1200
+            vel_suave_min=100
+            vel_forward = 1300
             if abs(distancia_al_centro) == 320:
                 if self.contandoFramesParado != 3:
                     stop(self.miPwm)
@@ -498,7 +506,7 @@ class VehiculoAutonomo (object):
                     #     print('PERDIDO- Izquierda brusco')
                     #     giroIzquierdaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
                     self.contandoFramesBackward += 1
-                    if self.contandoFramesBackward == 1:
+                    if self.contandoFramesBackward == 2:
                         self.contandoFramesParado = 0
             else:
                 limite1 = 60
@@ -507,12 +515,12 @@ class VehiculoAutonomo (object):
                 self.contandoFramesParado = 0
                 if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
                     # print("Izquierda Suave")
-                    self.stoppingCounterMax = 5
+                    self.stoppingCounterMax = 3
                     giroIzquierdaSuave(self.miPwm, vel_suave_max, vel_suave_min)
                 elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
                     giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
                     # print("Derecha Suave")
-                    self.stoppingCounterMax = 5
+                    self.stoppingCounterMax = 3
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
                         giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
                         # print("Derecha Brusco")
@@ -522,7 +530,7 @@ class VehiculoAutonomo (object):
                         # print("Izquierda Brusco")
                         self.stoppingCounterMax = 2
                 else:
-                    self.stoppingCounterMax = 5
+                    self.stoppingCounterMax = 3
                     forward(self.miPwm, vel_forward)
                     # print('forward')
 
@@ -533,7 +541,8 @@ class VehiculoAutonomo (object):
     def _moverVehiculoCruzarBocacalle(self):
         print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
         vel_suave_min=1700
-        forward(self.miPwm, vel_suave_min)
+        # forward(self.miPwm, vel_suave_min)
+        stop(self.miPwm)
 
     def _buscarDeposito(self, frameCompleto):
         frameMitad = frameCompleto[int(self.height*0.5):int(self.height),0:int(self.width)] #Mitad inferior
@@ -574,13 +583,7 @@ class VehiculoAutonomo (object):
 
                 # Aca corremos la funcion que busca un codigo qr en la imagen para comenzar
                 if self.listoParaReiniciar:
-                    qr_encontrado = self._buscar_qr(frameCompleto)
-                    if qr_encontrado[0] == 'P':
-                        print("inicio hallado")
-                        stop(self.miPwm)
-                        self.listoParaReiniciar = False
-                        self.depositoABuscar = -1
-                        self.tiempoDeEsperaInicial = -1
+                    self._buscar_qr(frameCompleto)
                 else:
                     if self.depositoABuscar == -1:
                         self._leer_qr(frameCompleto)
@@ -641,7 +644,7 @@ class VehiculoAutonomo (object):
                     # Mostrar grilla
                     # self._dibujarGrilla()
                     # Display the resulting frame
-                    #cv2.imshow('frameResulting', self.frameProcesado)
+                    cv2.imshow('frameProcesado', self.frameProcesado)
 
                     # Press Q on keyboard to  exit
                     key = cv2.waitKey(10)
