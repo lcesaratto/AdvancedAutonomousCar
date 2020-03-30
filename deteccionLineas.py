@@ -24,7 +24,6 @@ class VehiculoAutonomo (object):
         self.left_points_up_med = 0
         self.left_points_up_last = np.array([0, 0])
         self.right_points_up_last = np.array([0, 0])
-        self.dentroDeBocacalle = False
         self.contandoFramesParado = 0
         # Array para almacenar las ultimas 10 posiciones del vehiculo
         self.ultimas_posiciones = np.zeros(10)
@@ -357,13 +356,13 @@ class VehiculoAutonomo (object):
     def _reconstruirFrame(self, porcionFrameProcesado, fila, columna):
         for x in range(40): #filas
             for j in range(40): #columnas
-                self.frameProcesado[200-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
+                self.frameProcesado[440-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
 
     def _detectarBocacalle(self):
         if self.bocacalleDetectada:
-            cv2.line(self.frameProcesado,(self.left_points_up_last,140),(self.right_points_up_last,140),(0,255,0),2)
+            cv2.line(self.frameProcesado,(self.left_points_up_last,420),(self.right_points_up_last,420),(0,255,0),2)
         else:
-            cv2.line(self.frameProcesado,(self.left_points_up[0],140),(self.right_points_up[0],140),(255,255,255),2)
+            cv2.line(self.frameProcesado,(self.left_points_up[0],420),(self.right_points_up[0],420),(255,255,255),2)
 
         # cv2.line(self.frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
 
@@ -408,11 +407,11 @@ class VehiculoAutonomo (object):
         self.frameProcesado[:,::dy,:] = grid_color
         self.frameProcesado[::dx,:,:] = grid_color
 
-    def _detectarLineaVerde(self, frame):
+    def _detectarLineaVerde(self, frameOriginal):
         #Corto el frame
         # frame = self.frameProcesado
-        frame = frame[320:480,0:int(self.width)] #
-        cv2.imshow('FrameOriginalRecortado', frame)
+        frame = frameOriginal[320:480,0:int(self.width)] #
+        # cv2.imshow('FrameOriginalRecortado', frame)
         #Defino parametros HSV para detectar color verde 
         lower_green_noche = np.array([20, 60, 100])
         upper_green_noche = np.array([80, 230, 140])
@@ -432,7 +431,6 @@ class VehiculoAutonomo (object):
         #mask_green_e = cv2.dilate(mask_green, kernel, iterations=1)
         #kernel = np.ones((11,11), np.uint8)
         #mask_green_c = cv2.morphologyEx(mask_green_e, cv2.MORPH_CLOSE, kernel)
-        cv2.imshow('FiltroVerde', mask_green)
         y, x = np.where(mask_green == 255)
         try:
             if len(x) < 100:
@@ -443,6 +441,16 @@ class VehiculoAutonomo (object):
             x_mid = 0
         x_mid_int=int(round(x_mid))
         self.ubicacion_punto_verde = x_mid_int
+        # print(self.ubicacion_punto_verde)
+        if x.size > 50:    
+            m,b = np.polyfit(x,y,1)
+        #     print('##########################' ,m,b)
+            cv2.line(mask_green,(int(-b/m),0),(int((160-b)/m),160),(255,255,255), 3)
+        #     real_m = 160/(((160-b)/m)+b/m)
+        #     print(real_m)
+
+        cv2.line(mask_green,(self.ubicacion_punto_verde,0),(self.ubicacion_punto_verde,480),(255,255,255), 2)
+        cv2.imshow('FiltroVerde', mask_green)
     
     def _tomarDecisionMovimiento(self):
         # Si detecto la bocacalle me preparo para doblar o seguir, esta bandera se limpia sola cuando terminamos de cruzar
@@ -461,16 +469,7 @@ class VehiculoAutonomo (object):
         
     def _moverVehiculoEnLineaVerde(self):
 
-        ubicacion_punto_central = (self.right_points_up[0] + self.left_points_up[0]) / 2        
-        if self.dentroDeBocacalle:
-            ubicacion_punto_central = (self.right_points_up_last + self.left_points_up_last) / 2
-            distancia_al_centro = (self.width/2) - ubicacion_punto_central
-        elif self.cartelDetectado: # ToDo: Ver esta condicion, probablemente ya no sirva
-            ubicacion_punto_central = self.ubicacion_punto_verde
-            distancia_al_centro = (self.width/2) - ubicacion_punto_central
-
-        else:
-            distancia_al_centro = (self.width/2) - ubicacion_punto_central
+        distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
 
         self.stoppingCounter +=1
         if self.stoppingCounter == 1:
@@ -487,18 +486,18 @@ class VehiculoAutonomo (object):
             vel_brusca_min=1000
             # vel_brusca_max_perdido=2500
             # vel_brusca_min_perdido=1400
-            vel_suave_max=2000
-            vel_suave_min=100
-            vel_forward = 1300
+            vel_suave_max=1400
+            vel_suave_min=700
+            vel_forward = 1200
+
             if abs(distancia_al_centro) == 320:
                 if self.contandoFramesParado != 3:
                     stop(self.miPwm)
-                    # print('Parado')
                     self.contandoFramesParado += 1
                     self.contandoFramesBackward = 0
-                #elif self.contandoFramesBackward != 3:
                 else:
-                    backward(self.miPwm, vel_forward)
+                    # backward(self.miPwm, vel_forward)
+
                     # if self.ultima_distancia <= 0:
                     #     print('PERDIDO- Derecha brusco')
                     #     giroDerechaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
@@ -508,31 +507,32 @@ class VehiculoAutonomo (object):
                     self.contandoFramesBackward += 1
                     if self.contandoFramesBackward == 2:
                         self.contandoFramesParado = 0
+            
             else:
-                limite1 = 60
-                limite2 = 150
+                limite1 = 40
+                limite2 = 200
                 distancia_al_centro -= 11
                 self.contandoFramesParado = 0
                 if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
-                    # print("Izquierda Suave")
-                    self.stoppingCounterMax = 3
-                    giroIzquierdaSuave(self.miPwm, vel_suave_max, vel_suave_min)
+                    print("Izquierda Suave")
+                    self.stoppingCounterMax = 2
+                    # giroIzquierdaSuave(self.miPwm, vel_suave_max, vel_suave_min)
                 elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
-                    giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
-                    # print("Derecha Suave")
-                    self.stoppingCounterMax = 3
+                    # giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
+                    print("Derecha Suave")
+                    self.stoppingCounterMax = 2
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
-                        giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
-                        # print("Derecha Brusco")
+                        # giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
+                        print("Derecha Brusco")
                         self.stoppingCounterMax = 2
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
-                        giroIzquierdaBrusco(self.miPwm, vel_brusca_max,vel_brusca_min)
-                        # print("Izquierda Brusco")
+                        # giroIzquierdaBrusco(self.miPwm, vel_brusca_max,vel_brusca_min)
+                        print("Izquierda Brusco")
                         self.stoppingCounterMax = 2
                 else:
-                    self.stoppingCounterMax = 3
-                    forward(self.miPwm, vel_forward)
-                    # print('forward')
+                    self.stoppingCounterMax = 2
+                    # forward(self.miPwm, vel_forward)
+                    print('forward')
 
         if abs(distancia_al_centro) < 200:
             self.ultima_distancia = distancia_al_centro
@@ -577,6 +577,7 @@ class VehiculoAutonomo (object):
         while self.cap.isOpened():
             ret, frameCompleto = self.cap.read()
             if ret:
+                out.write(frameCompleto)
                 # self.tiempoDeEsperaInicial = 0 # ToDo: Borrar esta linea
                 # self.depositoABuscar = 0 # ToDo: Borrar esta linea
                 # self.listoParaReiniciar = False
@@ -644,7 +645,7 @@ class VehiculoAutonomo (object):
                     # Mostrar grilla
                     # self._dibujarGrilla()
                     # Display the resulting frame
-                    cv2.imshow('frameProcesado', self.frameProcesado)
+                    # cv2.imshow('frameProcesado', self.frameProcesado)
 
                     # Press Q on keyboard to  exit
                     key = cv2.waitKey(10)
@@ -658,6 +659,7 @@ class VehiculoAutonomo (object):
 
         # When everything done, release the video capture object
         self.cap.release()
+        out.release()
         # Closes all the frames
         cv2.destroyAllWindows()
         exit()
@@ -670,5 +672,6 @@ class VehiculoAutonomo (object):
         #     exit()
 
 if __name__ == "__main__":
+    out = cv2.VideoWriter('outputAut3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
     vehiculoAutonomo = VehiculoAutonomo()
     vehiculoAutonomo.comenzar()
