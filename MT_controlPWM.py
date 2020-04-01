@@ -120,3 +120,9 @@ class controladorPWM:
 		self.pwm.set_pwm(6, 0, 0) #Atras Izquierda
 		self.pwm.set_pwm(1, 0, 0) #Delante Derecha
 		self.pwm.set_pwm(5, 0, 0) #Delante Izquierda
+
+controladorPwm = controladorPWM()
+controladorPwm.start(servo_fw=1200, servo_bw=1300, 
+                     servo_suave_min=1700, servo_suave_max=500, 
+                     servo_brusco_min=1000, servo_brusco_max=2450, tiempo=0.1)
+					 

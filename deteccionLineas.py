@@ -7,11 +7,15 @@ from pyzbar import pyzbar
 import copy
 from controlPWM import procesoAuxiliar
 from multiprocessing import Process, Pipe
+from threading import Thread
 
-def procesoPrincipal(enviar1, enviar2):
+
+def procesoPrincipal(enviar1):
 
     class VehiculoAutonomo (object):
         def __init__(self):
+            self.frameCompleto = []
+
             self.cap = self._abrirCamara()
             self.fps, self.width, self.height = self._obtenerParametrosFrame()
             # Frame con el que trabajan todos los metodos
@@ -116,13 +120,15 @@ def procesoPrincipal(enviar1, enviar2):
                     self.tiempoDeEsperaInicial = time.time()
 
         def _buscar_qr(self, frame):
-            enviar2.send(frame) #Todo: make frame global to increase speed
-            # barcodes = pyzbar.decode(frame)
-            barcodes = ['A1']
+            # global frameGlobal
+            # frameGlobal=frame
+            # enviar2.send('frame') #Todo: make frame global to increase speed
+            barcodes = pyzbar.decode(frame)
+            # barcodes = ['A1']
             if barcodes:
-                # qr_encontrado = barcodes[0].data.decode("utf-8")
+                qr_encontrado = barcodes[0].data.decode("utf-8")
                 # print(qr_encontrado)
-                qr_encontrado = 'A1'
+                # qr_encontrado = 'A1'
                 # ToDo: a qr_encontrado falta sacarle la 'F' de fin para compara contra self.depositoABuscar
                 if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar and not self.listoParaReiniciar:
                 # if qr_encontrado == self.depositoABuscar:
@@ -462,7 +468,7 @@ def procesoPrincipal(enviar1, enviar2):
             # #     print(real_m)
 
             cv2.line(mask_green,(self.ubicacion_punto_verde,0),(self.ubicacion_punto_verde,480),(255,255,255), 2)
-            cv2.imshow('FiltroVerde', mask_green)
+            # cv2.imshow('FiltroVerde', mask_green)
         
         def _tomarDecisionMovimiento(self):
             # Si detecto la bocacalle me preparo para doblar o seguir, esta bandera se limpia sola cuando terminamos de cruzar
@@ -573,19 +579,18 @@ def procesoPrincipal(enviar1, enviar2):
             # controladorPwm.actualizarOrden('stop')
             # stop(self.miPwm)
 
-        def _buscarDeposito(self, frameCompleto):
-            frameMitad = frameCompleto[int(self.height*0.5):int(self.height),0:int(self.width)] #Mitad inferior
-            self._buscar_qr(frameCompleto)
+        def _buscarDeposito(self):
+            # frameMitad = self.frameCompleto[int(self.height*0.5):int(self.height),0:int(self.width)] #Mitad inferior
+            self._buscar_qr(self.frameCompleto)
 
-        def _actualizarValorSaturacion(self, frameCompleto):
-            self.arrayCircular[self.indiceCircular] = self._obtenerLuminosidadAmbiente(frameCompleto)
+        def _actualizarValorSaturacion(self):
+            self.arrayCircular[self.indiceCircular] = self._obtenerLuminosidadAmbiente(self.frameCompleto)
             self.indiceCircular += 1
             if self.indiceCircular == 5:
                 self.indiceCircular = 0
             self.multiplicadorLuminosidadAmbiente = np.mean(self.arrayCircular)
             # print(self.multiplicadorLuminosidadAmbiente)
             
-
         def comenzar(self):
             # try:
             # En el proximo loop calcularemos la intensidad de luz ambiente para ajustar filtros
@@ -606,6 +611,8 @@ def procesoPrincipal(enviar1, enviar2):
             while self.cap.isOpened():
                 ret, frameCompleto = self.cap.read()
                 if ret:
+                    self.frameCompleto = frameCompleto
+                    # print('hola')
                     out.write(frameCompleto)
                     # self.tiempoDeEsperaInicial = 0 # ToDo: Borrar esta linea
                     # self.depositoABuscar = 0 # ToDo: Borrar esta linea
@@ -654,6 +661,10 @@ def procesoPrincipal(enviar1, enviar2):
                         
                         # Aca se aplican todos los filtros al frame, luego hough y se guardan las posiciones de las lineas 
                         # encontradas para luego utilizar en self._detectarBocacalle()
+
+                        Thread(target=self._actualizarValorSaturacion, args=()).start()
+
+                        print('////////////////////////////////////////////////////: ',self.multiplicadorLuminosidadAmbiente)
                         
                         # self._actualizarValorSaturacion(frameCompleto)
 
@@ -680,14 +691,16 @@ def procesoPrincipal(enviar1, enviar2):
 
                         print("FPS 5: ", (1/(time.time()-tiempoInicialFPS)))
 
-                        self._buscarDeposito(frameCompleto)
+                        Thread(target=self._buscarDeposito, args=()).start()
+
+                        # self._buscarDeposito(frameCompleto)
 
                         print("FPS 6: ", (1/(time.time()-tiempoInicialFPS)))
 
                         # Mostrar grilla
                         # self._dibujarGrilla()
                         # Display the resulting frame
-                        # cv2.imshow('frameProcesado', self.frameProcesado)
+                        cv2.imshow('frameCompleto', self.frameCompleto)
 
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
@@ -722,26 +735,27 @@ def procesoPrincipal(enviar1, enviar2):
 def procesoAuxiliar2(recibir2):
     def loop():
         while True:
+            # time.sleep(0.1)
             frame = recibir2.recv()
+            # print('$$$$$$$$$$$$$$$$$$$$$$$$: ',frameGlobal)
             # barcodes = pyzbar.decode(frame)
+            # print(barcodes.data)
 
     loop()
-
-
 
 if __name__ == "__main__":
     out = cv2.VideoWriter('outputAut3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
 
     enviar1, recibir1 = Pipe()
-    enviar2, recibir2 = Pipe()
+    # enviar2, recibir2 = Pipe()
     
-    P_principal = Process(target=procesoPrincipal, args=(enviar1,enviar2,))
+    P_principal = Process(target=procesoPrincipal, args=(enviar1,))
     P_auxiliar = Process(target=procesoAuxiliar, args=(recibir1,))
-    P_auxiliar2 = Process(target=procesoAuxiliar2, args=(recibir2,))
+    # P_auxiliar2 = Process(target=procesoAuxiliar2, args=(recibir2,))
     
     P_principal.start()
     P_auxiliar.start()
-    P_auxiliar2.start()
+    # P_auxiliar2.start()
 
 
     # controladorPwm = controladorPWM()
