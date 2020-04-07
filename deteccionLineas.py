@@ -20,6 +20,7 @@ def procesoPrincipal(enviar1):
             self.fps, self.width, self.height = self._obtenerParametrosFrame()
             # Frame con el que trabajan todos los metodos
             self.frameProcesado = []
+            self.mask_green = []
             # Especificamos mediante los siguientes array que porciones de frame procesar
             self.filasDeseadas = [1]
             self.columnasDeseadas = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
@@ -443,6 +444,7 @@ def procesoPrincipal(enviar1):
             frame = cv2.GaussianBlur(frame, (3, 3), 0)
             hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
+            self.mask_green = copy.deepcopy(mask_green)
             #kernel = np.ones((3,3), np.uint8)
             #mask_green_a = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
             #kernel = np.ones((7,7), np.uint8)
@@ -590,7 +592,66 @@ def procesoPrincipal(enviar1):
                 self.indiceCircular = 0
             self.multiplicadorLuminosidadAmbiente = np.mean(self.arrayCircular)
             # print(self.multiplicadorLuminosidadAmbiente)
-            
+            # 
+
+        def _detectarBocacalleVerde(self):
+
+            lower_left_triangle = np.tril(self.mask_green, -1) # Lower triangle of an array
+            upper_left_triangle = np.flipud(np.tril(np.flipud(self.mask_green), 0)) # Upper triangle of an array
+            lower_right_triangle = np.fliplr(np.tril(np.fliplr(self.mask_green), -1)) # Lower triangle of an array
+            upper_right_triangle = np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(self.mask_green)), 0))) # Upper triangle of an array
+
+            y_up, x_up = np.where(upper_left_triangle == 1)
+            y_down, x_down = np.where(lower_right_triangle == 1)
+
+            suficientesPuntos = False
+            diagonalNoCruza = False
+
+            if len(x_up) > 200 and len(x_down) > 1000:
+                diagonal_right = np.eye(480,640,0,bool)
+                suficientesPuntos = True
+                # cv2.imshow('upper_left', upper_left_triangle + diagonal_right)
+            else:
+                pass
+                # cv2.imshow('upper_left', upper_left_triangle)
+
+            frameDiagonal = copy.deepcopy(self.frameCompleto)
+            m_up = 0
+            m_down = 0
+            b_up = 0
+            b_down = 0
+
+            if x_up.size > 50:    
+                m_up,b_up = np.polyfit(x_up,y_up,1)
+
+            if x_down.size > 50:    
+                m_down,b_down = np.polyfit(x_down,y_down,1)
+
+            b_diag_azul = 0
+            b_diag_amarilla = 480
+            m_diag_azul = 480/640
+            m_diag_amarilla = -480/640
+
+            try:
+                # x_azul_contra_up = (b_diag_azul-b_up)/(m_up-m_diag_azul)
+                # x_azul_contra_down = (b_diag_azul-b_down)/(m_down-b_diag_azul)
+                x_amarilla_contra_up = (b_diag_amarilla-b_up)/(m_up-m_diag_amarilla)
+                x_amarilla_contra_down = (b_diag_amarilla-b_down)/(m_down-m_diag_amarilla)
+
+                y_amarilla_contra_up = m_diag_amarilla * x_amarilla_contra_up + b_diag_amarilla
+                y_amarilla_contra_down = m_diag_amarilla * x_amarilla_contra_down + b_diag_amarilla
+
+
+                if not((0 < x_amarilla_contra_up < 640) and (0 < y_amarilla_contra_up < 480)) and not((0 < x_amarilla_contra_down < 640) and (0 < y_amarilla_contra_down < 480)):
+                    diagonalNoCruza = True
+            except:
+                diagonalNoCruza = False
+
+            if suficientesPuntos and diagonalNoCruza:           
+                self.bocacalleDetectada = True
+            else:
+                self.bocacalleDetectada = False
+
         def comenzar(self):
             # try:
             # En el proximo loop calcularemos la intensidad de luz ambiente para ajustar filtros
@@ -681,6 +742,7 @@ def procesoPrincipal(enviar1):
 
                         # Busco constantemente la bocacalle y su fin
                         # self._detectarBocacalle()
+                        self._detectarBocacalleVerde()
 
                         print("FPS 4: ", (1/(time.time()-tiempoInicialFPS)))
 

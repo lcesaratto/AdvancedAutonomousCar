@@ -5,9 +5,13 @@ from copy import deepcopy
 cap = cv2.VideoCapture('outputMan2.avi')
 width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
 
+out = cv2.VideoWriter('VideoDeMuestra.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 20, (640,480))
+
+
 while cap.isOpened():
     ret, frame = cap.read()
     if ret:
+        frameDiagonal = deepcopy(frame)
         lower_green = np.array([40, int(20*1.8), 100])
         upper_green = np.array([80, 230, 140])
         frame = cv2.GaussianBlur(frame, (3, 3), 0)
@@ -36,7 +40,7 @@ while cap.isOpened():
             pass
             # cv2.imshow('upper_left', upper_left_triangle)
 
-        frameDiagonal = deepcopy(frame)
+        
         m_up = 0
         m_down = 0
         b_up = 0
@@ -66,16 +70,18 @@ while cap.isOpened():
             if not((0 < x_amarilla_contra_up < 640) and (0 < y_amarilla_contra_up < 480)) and not((0 < x_amarilla_contra_down < 640) and (0 < y_amarilla_contra_down < 480)):
                 diagonalNoCruza = True
         except:
-            diagonalNoCruza = False
+            pass
 
         if suficientesPuntos and diagonalNoCruza:
             cv2.line(frameDiagonal,(0,int(b_up)),(int(-b_up/m_up),0),(255,255,255), 2)
             cv2.line(frameDiagonal,(int((480-b_down)/m_down),480),(640,int(640*m_down+b_down)),(255,255,255), 2)
+            frameDiagonal[:,:,2] = frameDiagonal[:,:,2] + 30
 
         cv2.imshow('lower_right', lower_right_triangle)
         cv2.imshow('imagen original', frame)
+        out.write(frameDiagonal)
         cv2.imshow('eleccion de diagonal', frameDiagonal)
-        key = cv2.waitKey(200)
+        key = cv2.waitKey(10)
         if key == ord('q') or key == ord('Q'):
             break
         if key == ord('d') or key == ord('D'):
