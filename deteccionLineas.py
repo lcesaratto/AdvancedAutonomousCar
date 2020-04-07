@@ -649,6 +649,7 @@ def procesoPrincipal(enviar1):
 
             if suficientesPuntos and diagonalNoCruza:           
                 self.bocacalleDetectada = True
+                print('AAAAAAAAAAAAAAA BOCACALLE DETECTADA!')
             else:
                 self.bocacalleDetectada = False
 
@@ -762,7 +763,7 @@ def procesoPrincipal(enviar1):
                         # Mostrar grilla
                         # self._dibujarGrilla()
                         # Display the resulting frame
-                        cv2.imshow('frameCompleto', self.frameCompleto)
+                        cv2.imshow('frameCompleto', self.mask_green)
 
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
