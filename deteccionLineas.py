@@ -260,10 +260,10 @@ def procesoPrincipal(enviar1):
             #             porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrame, fila, columna)
             #             self._reconstruirFrame(porcionFrameProcesado, fila, columna)
 
-        # def _prepararFrame (self, frame):
-        #     # frame = cv2.flip(frame, flipCode=-1)
-        #     frame = frame[int(self.height*0.5):int(self.height),0:int(self.width)]#frame = frame[0:int(self.height*0.5),0:int(self.width)]
-        #     return frame
+        def _prepararFrame (self, frame):
+            # frame = cv2.flip(frame, flipCode=-1)
+            frame = frame[int(self.height*0.5):int(self.height),0:int(self.width)]#frame = frame[0:int(self.height*0.5),0:int(self.width)]
+            return frame
 
         def _aplicarFiltrosMascaras (self, frame):
             #Defino parametros HLS o HSV para eliminar fondo 

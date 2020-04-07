@@ -52,20 +52,20 @@ def procesoAuxiliar(recibir1):
 				self.tiempoTranscurrido = time.time()
 				self.vehiculoParado = False
 				
-				# if orden == 'stop':
-				# 	self._stop()
-				# elif orden == 'forward':
-				# 	self._forward()
-				# elif orden == 'backward':
-				# 	self._backward()
-				# elif orden == 'giroBruDer':
-				# 	self._giroDerechaBrusco()
-				# elif orden == 'giroBruIzq':
-				# 	self._giroIzquierdaBrusco()
-				# elif orden == 'giroSuaDer':
-				# 	self._giroDerechaSuave()
-				# elif orden == 'giroSuaIzq':
-				# 	self._giroIzquierdaSuave()
+				if orden == 'stop':
+					self._stop()
+				elif orden == 'forward':
+					self._forward()
+				elif orden == 'backward':
+					self._backward()
+				elif orden == 'giroBruDer':
+					self._giroDerechaBrusco()
+				elif orden == 'giroBruIzq':
+					self._giroIzquierdaBrusco()
+				elif orden == 'giroSuaDer':
+					self._giroDerechaSuave()
+				elif orden == 'giroSuaIzq':
+					self._giroIzquierdaSuave()
 
 				if not self.vehiculoParado and ((time.time() - self.tiempoTranscurrido) > self.tiempoDeAccion):
 					print('STOPPING')
