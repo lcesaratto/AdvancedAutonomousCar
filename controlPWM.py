@@ -55,6 +55,8 @@ def procesoAuxiliar(recibir1):
 				if orden == 'stopAndIgnore':
 					self._stop()
 					time.sleep(15)
+					while recibir1.poll():
+						recibir1.recv()
 				elif orden == 'stop':
 					self._stop()
 				elif orden == 'forward':

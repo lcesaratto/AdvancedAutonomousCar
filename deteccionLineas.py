@@ -657,7 +657,7 @@ def procesoPrincipal(enviar1):
 
             if suficientesPuntos and diagonalNoCruza:           
                 self.bocacalleDetectada = True
-                enviar1.send('stopAndIgnore')
+                # enviar1.send('stopAndIgnore')
                 print('AAAAAAAAAAAAAAA BOCACALLE DETECTADA!')
             else:
                 self.bocacalleDetectada = False
