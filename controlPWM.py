@@ -52,7 +52,10 @@ def procesoAuxiliar(recibir1):
 				self.tiempoTranscurrido = time.time()
 				self.vehiculoParado = False
 				
-				if orden == 'stop':
+				if orden == 'stopAndIgnore':
+					self._stop()
+					time.sleep(15)
+				elif orden == 'stop':
 					self._stop()
 				elif orden == 'forward':
 					self._forward()
@@ -127,7 +130,7 @@ def procesoAuxiliar(recibir1):
 			self.pwm.set_pwm(5, 0, 0) #Delante Izquierda
 
 	controladorPwm = controladorPWM()
-	controladorPwm.setear_parametros(servo_fw=1100, servo_bw=1100, 
-                         servo_suave_min=2000, servo_suave_max=500, 
-                         servo_brusco_min=1000, servo_brusco_max=2000, tiempo=0.02)
+	controladorPwm.setear_parametros(servo_fw=850, servo_bw=1200, 
+                         servo_suave_min=2100, servo_suave_max=400, 
+                         servo_brusco_min=800, servo_brusco_max=2400, tiempo=0.02)
 	controladorPwm.start_loop()

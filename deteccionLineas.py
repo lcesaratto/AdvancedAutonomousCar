@@ -135,10 +135,10 @@ def procesoPrincipal(enviar1):
                 # if qr_encontrado == self.depositoABuscar:
                     print('Dejando paquete!!')
                     self.depositoHallado = -1
-                    enviar1.send('stop')
+                    enviar1.send('stopAndIgnore')
                     # controladorPwm.actualizarOrden('stop')
                     # stop(self.miPwm)
-                    cv2.waitKey(15000)
+                    # cv2.waitKey(15000)
                     self.listoParaReiniciar = True
                 if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
                     print("inicio hallado")
@@ -534,7 +534,7 @@ def procesoPrincipal(enviar1):
             
             else:
                 limite1 = 40
-                limite2 = 200
+                limite2 = 170
                 distancia_al_centro -= 11
                 self.contandoFramesParado = 0
                 print('distancia al centro: ', distancia_al_centro, self.ubicacion_punto_verde)
@@ -596,10 +596,19 @@ def procesoPrincipal(enviar1):
 
         def _detectarBocacalleVerde(self):
 
-            lower_left_triangle = np.tril(self.mask_green, -1) # Lower triangle of an array
-            upper_left_triangle = np.flipud(np.tril(np.flipud(self.mask_green), 0)) # Upper triangle of an array
-            lower_right_triangle = np.fliplr(np.tril(np.fliplr(self.mask_green), -1)) # Lower triangle of an array
-            upper_right_triangle = np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(self.mask_green)), 0))) # Upper triangle of an array
+            frame = copy.deepcopy(self.frameCompleto)
+            lower_green = np.array([40, int(20*1.8), 100])
+            upper_green = np.array([80, 230, 140])
+            frame = cv2.GaussianBlur(frame, (3, 3), 0)
+            hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
+            mask_green = mask_green/255
+            mask_green.astype(bool)
+
+            lower_left_triangle = np.tril(mask_green, -1) # Lower triangle of an array
+            upper_left_triangle = np.flipud(np.tril(np.flipud(mask_green), 0)) # Upper triangle of an array
+            lower_right_triangle = np.fliplr(np.tril(np.fliplr(mask_green), -1)) # Lower triangle of an array
+            upper_right_triangle = np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(mask_green)), 0))) # Upper triangle of an array
 
             y_up, x_up = np.where(upper_left_triangle == 1)
             y_down, x_down = np.where(lower_right_triangle == 1)
@@ -615,7 +624,6 @@ def procesoPrincipal(enviar1):
                 pass
                 # cv2.imshow('upper_left', upper_left_triangle)
 
-            frameDiagonal = copy.deepcopy(self.frameCompleto)
             m_up = 0
             m_down = 0
             b_up = 0
@@ -649,6 +657,7 @@ def procesoPrincipal(enviar1):
 
             if suficientesPuntos and diagonalNoCruza:           
                 self.bocacalleDetectada = True
+                enviar1.send('stopAndIgnore')
                 print('AAAAAAAAAAAAAAA BOCACALLE DETECTADA!')
             else:
                 self.bocacalleDetectada = False
