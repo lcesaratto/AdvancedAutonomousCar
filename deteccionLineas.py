@@ -752,11 +752,11 @@ def procesoPrincipal(enviar1):
 
                         # Busco constantemente la bocacalle y su fin
                         # self._detectarBocacalle()
-                        self._detectarBocacalleVerde()
+                        # Thread(target=self._detectarBocacalleVerde, args=()).start()
+                        self.bocacalleDetectada= False
+                        # self._detectarBocacalleVerde()
 
                         print("FPS 4: ", (1/(time.time()-tiempoInicialFPS)))
-
-                        self.bocacalleDetectada = False
 
                         # En base a los resultados de self._detectarBocacalle() decido si seguir la linea verde o cruzar la bocacalle
                         self._tomarDecisionMovimiento()
@@ -772,7 +772,8 @@ def procesoPrincipal(enviar1):
                         # Mostrar grilla
                         # self._dibujarGrilla()
                         # Display the resulting frame
-                        cv2.imshow('frameCompleto', self.mask_green)
+                        cv2.imshow('frameCompleto', frameCompleto)
+                        cv2.imshow('filtroVerde', self.mask_green)
 
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
