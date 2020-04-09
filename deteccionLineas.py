@@ -752,8 +752,8 @@ def procesoPrincipal(enviar1):
 
                         # Busco constantemente la bocacalle y su fin
                         # self._detectarBocacalle()
-                        # Thread(target=self._detectarBocacalleVerde, args=()).start()
-                        self.bocacalleDetectada= False
+                        Thread(target=self._detectarBocacalleVerde, args=()).start()
+                        # self.bocacalleDetectada= False
                         # self._detectarBocacalleVerde()
 
                         print("FPS 4: ", (1/(time.time()-tiempoInicialFPS)))
