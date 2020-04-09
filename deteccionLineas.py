@@ -772,7 +772,7 @@ def procesoPrincipal(enviar1):
                         # Mostrar grilla
                         # self._dibujarGrilla()
                         # Display the resulting frame
-                        cv2.imshow('frameCompleto', frameCompleto)
+                        # cv2.imshow('frameCompleto', frameCompleto)
                         cv2.imshow('filtroVerde', self.mask_green)
 
                         # Press Q on keyboard to  exit
