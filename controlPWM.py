@@ -44,7 +44,7 @@ def procesoAuxiliar(recibir1):
 				# time.sleep(0.1)
 				# if recibir1.poll():
 				orden = recibir1.recv()
-				print(orden)
+				# print(orden)
 
 				if orden == 'exit':
 					sys.exit()
@@ -55,6 +55,11 @@ def procesoAuxiliar(recibir1):
 				if orden == 'stopAndIgnore':
 					self._stop()
 					time.sleep(15)
+					while recibir1.poll():
+						recibir1.recv()
+				elif orden == 'forwardLong':
+					self._forward()
+					time.sleep(2)
 					while recibir1.poll():
 						recibir1.recv()
 				elif orden == 'stop':

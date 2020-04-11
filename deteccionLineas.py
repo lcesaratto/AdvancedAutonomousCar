@@ -15,6 +15,7 @@ def procesoPrincipal(enviar1):
     class VehiculoAutonomo (object):
         def __init__(self):
             self.frameCompleto = []
+            self.girandoHaciaDerecha = False
 
             self.cap = self._abrirCamara()
             self.fps, self.width, self.height = self._obtenerParametrosFrame()
@@ -112,7 +113,7 @@ def procesoPrincipal(enviar1):
             cv2.waitKey(10)
             barcodes = pyzbar.decode(frame)
             if barcodes:
-                print('asdad$$$$$$$$$$$$$$$$$$$$$$$           ', barcodes[0])
+                # print('asdad$$$$$$$$$$$$$$$$$$$$$$$           ', barcodes[0])
                 cv2.destroyWindow('buscandoQR')
                 barcodeData = barcodes[0].data.decode("utf-8")
                 if barcodeData[0] == 'I':
@@ -462,8 +463,14 @@ def procesoPrincipal(enviar1):
             x_mid_int=int(round(x_mid))
             self.ubicacion_punto_verde = x_mid_int
             # print(self.ubicacion_punto_verde)
-            # if x.size > 50:    
-            #     m,b = np.polyfit(x,y,1)
+            distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
+            if x.size > 50 and distancia_al_centro < 320:    
+                m,b = np.polyfit(x,y,1)
+                print('pendiente:',m)
+                if m < 0:
+                    self.girandoHaciaDerecha = True
+                else:
+                    self.girandoHaciaDerecha = False
             # #     print('##########################' ,m,b)
             #     cv2.line(mask_green,(int(-b/m),0),(int((160-b)/m),160),(255,255,255), 3)
             # #     real_m = 160/(((160-b)/m)+b/m)
@@ -518,14 +525,21 @@ def procesoPrincipal(enviar1):
                     self.contandoFramesParado += 1
                     self.contandoFramesBackward = 0
                 else:
-                    # controladorPwm.actualizarOrden('backward')
-                    enviar1.send('backward')
-                    # backward(self.miPwm, vel_forward)
-
-                    # if self.ultima_distancia <= 0:
-                    #     print('PERDIDO- Derecha brusco')
-                    #     giroDerechaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
+                    # if self.girandoHaciaDerecha:
+                    #     enviar1.send('giroBruDer')
                     # else:
+                    #     enviar1.send('giroBruIzq')
+                    # controladorPwm.actualizarOrden('backward')
+                    # enviar1.send('backward')
+                    # backward(self.miPwm, vel_forward)
+                    print('/////////////////////////////////////////////////////////     ', self.ultima_distancia)
+
+                    if self.ultima_distancia <= 0:
+                    #     print('PERDIDO- Derecha brusco')
+                        enviar1.send('giroBruDer')
+                    #     giroDerechaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
+                    else:
+                        enviar1.send('giroBruIzq')
                     #     print('PERDIDO- Izquierda brusco')
                     #     giroIzquierdaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
                     self.contandoFramesBackward += 1
@@ -537,9 +551,9 @@ def procesoPrincipal(enviar1):
                 limite2 = 170
                 distancia_al_centro -= 11
                 self.contandoFramesParado = 0
-                print('distancia al centro: ', distancia_al_centro, self.ubicacion_punto_verde)
+                # print('distancia al centro: ', distancia_al_centro, self.ubicacion_punto_verde)
                 if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
-                    print("Izquierda Suave")
+                    # print("Izquierda Suave")
                     enviar1.send('giroSuaIzq')
                     # controladorPwm.actualizarOrden('giroSuaIzq')
                     # self.stoppingCounterMax = 2
@@ -547,37 +561,37 @@ def procesoPrincipal(enviar1):
                 elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
                     # giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
                     enviar1.send('giroSuaDer')
-                    print("Derecha Suave")
+                    # print("Derecha Suave")
                     # controladorPwm.actualizarOrden('giroSuaDer')
                     # self.stoppingCounterMax = 2
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
                         # giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
-                        print("Derecha Brusco")
+                        # print("Derecha Brusco")
                         enviar1.send('giroBruDer')
                         # controladorPwm.actualizarOrden('giroBruDer')
                         # self.stoppingCounterMax = 2
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
                         # giroIzquierdaBrusco(self.miPwm, vel_brusca_max,vel_brusca_min)
-                        print("Izquierda Brusco")
+                        # print("Izquierda Brusco")
                         enviar1.send('giroBruIzq')
                         # controladorPwm.actualizarOrden('giroBruIzq')
                         # self.stoppingCounterMax = 2
                 else:
                     # self.stoppingCounterMax = 2
                     # forward(self.miPwm, vel_forward)
-                    print('forward')
+                    # print('forward')
                     enviar1.send('forward')
                     # controladorPwm.actualizarOrden('forward')
 
-            if abs(distancia_al_centro) < 200:
+            if abs(distancia_al_centro) < 320:
                 self.ultima_distancia = distancia_al_centro
                 # print(self.ultima_distancia)
 
         def _moverVehiculoCruzarBocacalle(self):
             print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-            vel_suave_min=1700
+            # vel_suave_min=1700
             # forward(self.miPwm, vel_suave_min)
-            enviar1.send('stop')
+            enviar1.send('forwardLong')
             # controladorPwm.actualizarOrden('stop')
             # stop(self.miPwm)
 
@@ -658,7 +672,7 @@ def procesoPrincipal(enviar1):
             if suficientesPuntos and diagonalNoCruza:           
                 self.bocacalleDetectada = True
                 # enviar1.send('stopAndIgnore')
-                print('AAAAAAAAAAAAAAA BOCACALLE DETECTADA!')
+                # print('AAAAAAAAAAAAAAA BOCACALLE DETECTADA!')
             else:
                 self.bocacalleDetectada = False
 
@@ -735,20 +749,20 @@ def procesoPrincipal(enviar1):
 
                         Thread(target=self._actualizarValorSaturacion, args=()).start()
 
-                        print('////////////////////////////////////////////////////: ',self.multiplicadorLuminosidadAmbiente)
+                        # print('////////////////////////////////////////////////////: ',self.multiplicadorLuminosidadAmbiente)
                         
                         # self._actualizarValorSaturacion(frameCompleto)
 
-                        print("FPS 1: ", (1/(time.time()-tiempoInicialFPS)))
+                        # print("FPS 1: ", (1/(time.time()-tiempoInicialFPS)))
 
                         # self._analizarFrameForFilasColumnas(frameCompleto)
 
-                        print("FPS 2: ", (1/(time.time()-tiempoInicialFPS)))
+                        # print("FPS 2: ", (1/(time.time()-tiempoInicialFPS)))
 
                         # Busco constantemente el punto central de la linea verde
                         self._detectarLineaVerde(frameCompleto)
 
-                        print("FPS 3: ", (1/(time.time()-tiempoInicialFPS)))
+                        # print("FPS 3: ", (1/(time.time()-tiempoInicialFPS)))
 
                         # Busco constantemente la bocacalle y su fin
                         # self._detectarBocacalle()
@@ -756,18 +770,18 @@ def procesoPrincipal(enviar1):
                         # self.bocacalleDetectada= False
                         # self._detectarBocacalleVerde()
 
-                        print("FPS 4: ", (1/(time.time()-tiempoInicialFPS)))
+                        # print("FPS 4: ", (1/(time.time()-tiempoInicialFPS)))
 
                         # En base a los resultados de self._detectarBocacalle() decido si seguir la linea verde o cruzar la bocacalle
                         self._tomarDecisionMovimiento()
 
-                        print("FPS 5: ", (1/(time.time()-tiempoInicialFPS)))
+                        # print("FPS 5: ", (1/(time.time()-tiempoInicialFPS)))
 
                         Thread(target=self._buscarDeposito, args=()).start()
 
                         # self._buscarDeposito(frameCompleto)
 
-                        print("FPS 6: ", (1/(time.time()-tiempoInicialFPS)))
+                        # print("FPS 6: ", (1/(time.time()-tiempoInicialFPS)))
 
                         # Mostrar grilla
                         # self._dibujarGrilla()
