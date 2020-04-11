@@ -66,7 +66,7 @@ def procesoPrincipal(enviar1):
             #PWM
             # self.miPwm = iniciarPWM() # ToDo: Descomentar esta linea
             self.ultima_distancia = 0
-            self.ultima_distancia_arr = np.zeros(5)
+            self.ultima_distancia_arr = np.zeros(20)
             self.indice_ultima_posicion_3 = 0
             #Luminosidad Ambiente
             self.multiplicadorLuminosidadAmbiente = 2
@@ -536,11 +536,11 @@ def procesoPrincipal(enviar1):
                     # backward(self.miPwm, vel_forward)
                     print('/////////////////////////////////////////////////////////     ', self.ultima_distancia)
 
-                    if self.ultima_distancia <= 0:
+                    if self.ultima_distancia <= 200:
                     #     print('PERDIDO- Derecha brusco')
                         enviar1.send('giroBruDer')
                     #     giroDerechaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
-                    else:
+                    elif self.ultima_distancia >= 200:
                         enviar1.send('giroBruIzq')
                     #     print('PERDIDO- Izquierda brusco')
                     #     giroIzquierdaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
@@ -586,9 +586,9 @@ def procesoPrincipal(enviar1):
                     # controladorPwm.actualizarOrden('forward')
 
             if abs(distancia_al_centro) < 320:
-                if (self.indice_ultima_posicion_3 is 5): #Resetea el indice del buffer circular
+                if (self.indice_ultima_posicion_3 is 20): #Resetea el indice del buffer circular
                     self.indice_ultima_posicion_3 = 0
-                self.ultima_distancia_arr[self.indice_ultima_posicion_3] = distancia_al_centro[0] #Agrega los valores al buffer circular
+                self.ultima_distancia_arr[self.indice_ultima_posicion_3] = distancia_al_centro #Agrega los valores al buffer circular
                 self.ultima_distancia = int(statistics.median(self.ultima_distancia_arr)) 
                 self. indice_ultima_posicion_3 += 1
                 # print(self.ultima_distancia)
@@ -625,62 +625,76 @@ def procesoPrincipal(enviar1):
             mask_green = mask_green/255
             mask_green.astype(bool)
 
-            lower_left_triangle = np.tril(mask_green, -1) # Lower triangle of an array
-            upper_left_triangle = np.flipud(np.tril(np.flipud(mask_green), 0)) # Upper triangle of an array
-            lower_right_triangle = np.fliplr(np.tril(np.fliplr(mask_green), -1)) # Lower triangle of an array
-            upper_right_triangle = np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(mask_green)), 0))) # Upper triangle of an array
-
-            y_up, x_up = np.where(upper_left_triangle == 1)
-            y_down, x_down = np.where(lower_right_triangle == 1)
-
-            suficientesPuntos = False
-            diagonalNoCruza = False
-
-            if len(x_up) > 200 and len(x_down) > 1000:
-                diagonal_right = np.eye(480,640,0,bool)
-                suficientesPuntos = True
-                # cv2.imshow('upper_left', upper_left_triangle + diagonal_right)
-            else:
-                pass
-                # cv2.imshow('upper_left', upper_left_triangle)
-
-            m_up = 0
-            m_down = 0
-            b_up = 0
-            b_down = 0
-
-            if x_up.size > 50:    
-                m_up,b_up = np.polyfit(x_up,y_up,1)
-
-            if x_down.size > 50:    
-                m_down,b_down = np.polyfit(x_down,y_down,1)
-
-            b_diag_azul = 0
-            b_diag_amarilla = 480
-            m_diag_azul = 480/640
-            m_diag_amarilla = -480/640
-
-            try:
-                # x_azul_contra_up = (b_diag_azul-b_up)/(m_up-m_diag_azul)
-                # x_azul_contra_down = (b_diag_azul-b_down)/(m_down-b_diag_azul)
-                x_amarilla_contra_up = (b_diag_amarilla-b_up)/(m_up-m_diag_amarilla)
-                x_amarilla_contra_down = (b_diag_amarilla-b_down)/(m_down-m_diag_amarilla)
-
-                y_amarilla_contra_up = m_diag_amarilla * x_amarilla_contra_up + b_diag_amarilla
-                y_amarilla_contra_down = m_diag_amarilla * x_amarilla_contra_down + b_diag_amarilla
-
-
-                if not((0 < x_amarilla_contra_up < 640) and (0 < y_amarilla_contra_up < 480)) and not((0 < x_amarilla_contra_down < 640) and (0 < y_amarilla_contra_down < 480)):
-                    diagonalNoCruza = True
-            except:
+            for i in range(2):
+                suficientesPuntos = False
                 diagonalNoCruza = False
+                m_up = 0
+                m_down = 0
+                b_up = 0
+                b_down = 0
+                if i==0:
+                    # Chequeo diagonal amarilla
+                    upper_left_triangle = np.flipud(np.tril(np.flipud(mask_green), 0)) # Upper triangle of an array
+                    lower_right_triangle = np.fliplr(np.tril(np.fliplr(mask_green), -1)) # Lower triangle of an array
+                    y_up_left, x_up_left = np.where(upper_left_triangle == 1)
+                    y_down_right, x_down_right = np.where(lower_right_triangle == 1)
+                    if len(x_up_left) > 200 and len(x_down_right) > 1000:
+                        # diagonal_right = np.eye(480,640,0,bool)
+                        suficientesPuntos = True
+                    else:
+                        continue
+                    if x_up_left.size > 50:    
+                        m_up,b_up = np.polyfit(x_up_left,y_up_left,1)
+                    if x_down_right.size > 50:    
+                        m_down,b_down = np.polyfit(x_down_right,y_down_right,1)
+                    b_diag_amarilla = 480
+                    m_diag_amarilla = -480/640
+                    try:
+                        x_amarilla_contra_up = (b_diag_amarilla-b_up)/(m_up-m_diag_amarilla)
+                        x_amarilla_contra_down = (b_diag_amarilla-b_down)/(m_down-m_diag_amarilla)
+                        y_amarilla_contra_up = m_diag_amarilla * x_amarilla_contra_up + b_diag_amarilla
+                        y_amarilla_contra_down = m_diag_amarilla * x_amarilla_contra_down + b_diag_amarilla
+                        if not((0 < x_amarilla_contra_up < 640) and (0 < y_amarilla_contra_up < 480)) and not((0 < x_amarilla_contra_down < 640) and (0 < y_amarilla_contra_down < 480)):
+                            diagonalNoCruza = True
+                        else:
+                            continue
+                    except:
+                        continue
+                    if suficientesPuntos and diagonalNoCruza:           
+                        self.bocacalleDetectada = True
+                        break
 
-            if suficientesPuntos and diagonalNoCruza:           
-                self.bocacalleDetectada = True
-                # enviar1.send('stopAndIgnore')
-                # print('AAAAAAAAAAAAAAA BOCACALLE DETECTADA!')
-            else:
-                self.bocacalleDetectada = False
+                else:
+                    # Chequeo diagonal azul
+                    lower_left_triangle = np.tril(mask_green, -1) # Lower triangle of an array
+                    upper_right_triangle = np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(mask_green)), 0))) # Upper triangle of an array
+                    y_up_right, x_up_right = np.where(upper_right_triangle == 1)
+                    y_down_left, x_down_left = np.where(lower_left_triangle == 1)
+                    if len(x_up_right) > 200 and len(x_down_left) > 1000:
+                        suficientesPuntos = True
+                    else:
+                        self.bocacalleDetectada = False
+                        break
+                    if x_up_right.size > 50:    
+                        m_up,b_up = np.polyfit(x_up_right,y_up_right,1)
+                    if x_down_left.size > 50:    
+                        m_down,b_down = np.polyfit(x_down_left,y_down_left,1)
+                    b_diag_azul = 0
+                    m_diag_azul = 480/640
+                    try:
+                        x_azul_contra_up = (b_diag_azul-b_up)/(m_up-m_diag_azul)
+                        x_azul_contra_down = (b_diag_azul-b_down)/(m_down-b_diag_azul)
+                        y_azul_contra_up = m_diag_azul * x_azul_contra_up + b_diag_azul
+                        y_azul_contra_down = m_diag_azul * x_azul_contra_down + b_diag_azul
+                        if not((0 < x_azul_contra_up < 640) and (0 < y_azul_contra_up < 480)) and not((0 < x_azul_contra_down < 640) and (0 < y_azul_contra_down < 480)):
+                            diagonalNoCruza = True
+                    except:
+                        diagonalNoCruza = False
+
+                    if suficientesPuntos and diagonalNoCruza:           
+                        self.bocacalleDetectada = True
+                    else:
+                        self.bocacalleDetectada = False
 
         def comenzar(self):
             # try:
