@@ -66,6 +66,8 @@ def procesoPrincipal(enviar1):
             #PWM
             # self.miPwm = iniciarPWM() # ToDo: Descomentar esta linea
             self.ultima_distancia = 0
+            self.ultima_distancia_arr = np.zeros(5)
+            self.indice_ultima_posicion_3 = 0
             #Luminosidad Ambiente
             self.multiplicadorLuminosidadAmbiente = 2
             self.indiceCircular = 0
@@ -584,7 +586,11 @@ def procesoPrincipal(enviar1):
                     # controladorPwm.actualizarOrden('forward')
 
             if abs(distancia_al_centro) < 320:
-                self.ultima_distancia = distancia_al_centro
+                if (self.indice_ultima_posicion_3 is 5): #Resetea el indice del buffer circular
+                    self.indice_ultima_posicion_3 = 0
+                self.ultima_distancia_arr[self.indice_ultima_posicion_3] = distancia_al_centro[0] #Agrega los valores al buffer circular
+                self.ultima_distancia = int(statistics.median(self.ultima_distancia_arr)) 
+                self. indice_ultima_posicion_3 += 1
                 # print(self.ultima_distancia)
 
         def _moverVehiculoCruzarBocacalle(self):
