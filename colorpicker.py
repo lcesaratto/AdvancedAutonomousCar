@@ -6,7 +6,7 @@ from matplotlib import colors
 from mpl_toolkits.mplot3d import axes3d, Axes3D
 import matplotlib.patches as mpatches
 def color_picker():
-            frame = cv2.imread('Imagenes/Imagen4.png')
+            frame = cv2.imread('LineaVerde.png')
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             plt.imshow(frame)
             plt.show()
