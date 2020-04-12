@@ -72,6 +72,8 @@ def procesoPrincipal(enviar1):
             self.multiplicadorLuminosidadAmbiente = 2
             self.indiceCircular = 0
             self.arrayCircular = np.zeros(5)
+
+            self.lastOrderCruzar = False
         
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -432,7 +434,7 @@ def procesoPrincipal(enviar1):
         def _detectarLineaVerde(self, frameOriginal):
             #Corto el frame
             # frame = self.frameProcesado
-            frame = frameOriginal[320:480,0:int(self.width)] #
+            frame = frameOriginal[320:480,0:int(self.width)] #320,480
             # cv2.imshow('FrameOriginalRecortado', frame)
             #Defino parametros HSV para detectar color verde 
             lower_green_noche = np.array([20, 60, 100])
@@ -536,19 +538,28 @@ def procesoPrincipal(enviar1):
                     # backward(self.miPwm, vel_forward)
                     print('/////////////////////////////////////////////////////////     ', self.ultima_distancia)
 
-                    if self.ultima_distancia <= 200:
+                    if self.ultima_distancia <= -250:
                     #     print('PERDIDO- Derecha brusco')
                         enviar1.send('giroBruDer')
                     #     giroDerechaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
-                    elif self.ultima_distancia >= 200:
+                    elif self.ultima_distancia >= 250:
                         enviar1.send('giroBruIzq')
                     #     print('PERDIDO- Izquierda brusco')
                     #     giroIzquierdaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
+                    else:
+                        enviar1.send('backward')
+                        # if self.girandoHaciaDerecha:
+                        #     enviar1.send('giroBruDer')
+                        # else:
+                        #     enviar1.send('giroBruIzq')
                     self.contandoFramesBackward += 1
                     if self.contandoFramesBackward == 2:
                         self.contandoFramesParado = 0
             
             else:
+                if abs(distancia_al_centro) < 200 and self.lastOrderCruzar:
+                    self.lastOrderCruzar = False
+                    enviar1.send('endForwardLong')
                 limite1 = 40
                 limite2 = 170
                 distancia_al_centro -= 11
@@ -594,10 +605,11 @@ def procesoPrincipal(enviar1):
                 # print(self.ultima_distancia)
 
         def _moverVehiculoCruzarBocacalle(self):
-            print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+            # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
             # vel_suave_min=1700
             # forward(self.miPwm, vel_suave_min)
             enviar1.send('forwardLong')
+            self.lastOrderCruzar = True
             # controladorPwm.actualizarOrden('stop')
             # stop(self.miPwm)
 
@@ -851,7 +863,7 @@ def procesoAuxiliar2(recibir2):
     loop()
 
 if __name__ == "__main__":
-    out = cv2.VideoWriter('outputAut3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
+    out = cv2.VideoWriter('outputGirandoPistaUnoOpt2.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
 
     enviar1, recibir1 = Pipe()
     # enviar2, recibir2 = Pipe()

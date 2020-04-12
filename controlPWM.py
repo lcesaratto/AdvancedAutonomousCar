@@ -48,22 +48,32 @@ def procesoAuxiliar(recibir1):
 
 				if orden == 'exit':
 					sys.exit()
-
-				self.tiempoTranscurrido = time.time()
-				self.vehiculoParado = False
-				
 				if orden == 'stopAndIgnore':
 					self._stop()
-					time.sleep(15)
+					time.sleep(5)
 					while recibir1.poll():
-						recibir1.recv()
+						if recibir1.recv() == 'exit':
+							self._stop()
+							sys.exit()
 				elif orden == 'forwardLong':
 					self._forward()
-					time.sleep(2)
-					while recibir1.poll():
-						recibir1.recv()
+					while True:
+						ordenaux = recibir1.recv()
+						if ordenaux == 'endForwardLong':
+							break
+						elif ordenaux == 'exit':
+							self._stop()
+							sys.exit()
+					# time.sleep(0.5)
+					# while recibir1.poll():
+					# 	recibir1.recv()
 				elif orden == 'stop':
 					self._stop()
+					# time.sleep(0.3)
+					# while recibir1.poll():
+					# 	if recibir1.recv() == 'exit':
+					# 		self._stop()
+					# 		sys.exit()
 				elif orden == 'forward':
 					self._forward()
 				elif orden == 'backward':
@@ -76,10 +86,6 @@ def procesoAuxiliar(recibir1):
 					self._giroDerechaSuave()
 				elif orden == 'giroSuaIzq':
 					self._giroIzquierdaSuave()
-
-				if not self.vehiculoParado and ((time.time() - self.tiempoTranscurrido) > self.tiempoDeAccion):
-					print('STOPPING')
-					self._stop()
 
 		def _forward(self):
 			self.pwm.set_pwm(2, 0, self.servo_min) #Atras Derecha
@@ -130,7 +136,6 @@ def procesoAuxiliar(recibir1):
 			self.pwm.set_pwm(4, 0, self.servo_max)
 
 		def _stop(self):
-			self.vehiculoParado = True
 			self.pwm.set_pwm(2, 0, 0) #Atras Derecha
 			self.pwm.set_pwm(6, 0, 0) #Atras Izquierda
 			self.pwm.set_pwm(1, 0, 0) #Delante Derecha
