@@ -449,6 +449,15 @@ def procesoPrincipal(enviar1):
             frame = cv2.GaussianBlur(frame, (3, 3), 0)
             hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
+
+            # lower_green = np.array([50, 80, 20])
+            # upper_green = np.array([75, 120, 60])
+            
+            # #Aplico filtro de color con los parametros ya definidos
+            # frame = cv2.GaussianBlur(frame, (3, 3), 0)
+            # hls_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+            # mask_green = cv2.inRange(hls_green, lower_green, upper_green)
+
             self.mask_green = copy.deepcopy(mask_green)
             #kernel = np.ones((3,3), np.uint8)
             #mask_green_a = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)

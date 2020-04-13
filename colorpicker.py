@@ -5,6 +5,8 @@ from matplotlib import cm
 from matplotlib import colors
 from mpl_toolkits.mplot3d import axes3d, Axes3D
 import matplotlib.patches as mpatches
+
+import copy 
 def color_picker():
             frame = cv2.imread('LineaVerde.png')
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -28,24 +30,24 @@ def color_picker():
 
 
 
-def _detectarLineaVerde(frameOriginal):
+def _detectarLineaVerde(frame):
             #Corto el frame
             # frame = self.frameProcesado
-            frame = frameOriginal[320:480,0:int(self.width)] #
+            # frame = frameOriginal[320:480,0:640] #
             # cv2.imshow('FrameOriginalRecortado', frame)
             #Defino parametros HSV para detectar color verde 
-            lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
-            upper_green = np.array([80, 230, 140])
+            lower_green = np.array([50, 80, 20])
+            upper_green = np.array([75, 120, 60])
             
             #Aplico filtro de color con los parametros ya definidos
             frame = cv2.GaussianBlur(frame, (3, 3), 0)
             hls_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
             mask_green = cv2.inRange(hls_green, lower_green, upper_green)
-            self.mask_green = copy.deepcopy(mask_green)
-            #kernel = np.ones((3,3), np.uint8)
-            #mask_green_a = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
-            #kernel = np.ones((7,7), np.uint8)
-            #mask_green_e = cv2.dilate(mask_green, kernel, iterations=1)
+            # self.mask_green = copy.deepcopy(mask_green)
+            # kernel = np.ones((3,3), np.uint8)
+            # mask_green_a = cv2.morphologyEx(mask_green, cv2.MORPH_OPEN, kernel)
+            # kernel = np.ones((5,5), np.uint8)
+            # mask_green_e = cv2.dilate(mask_green, kernel, iterations=1)
             #kernel = np.ones((11,11), np.uint8)
             #mask_green_c = cv2.morphologyEx(mask_green_e, cv2.MORPH_CLOSE, kernel)
             cv2.imshow('FiltroVerde', mask_green)
@@ -53,11 +55,17 @@ def _detectarLineaVerde(frameOriginal):
 
 
 if __name__ == "__main__":
-    color_picker()
-    '''
+    # color_picker()
     cap = cv2.VideoCapture(0)
     while cap.isOpened():
-            ret, frameCompleto = self.cap.read()
+            ret, frameCompleto = cap.read()
             if ret:
                 _detectarLineaVerde(frameCompleto)
-    '''
+
+            key = cv2.waitKey(10)
+            if key == ord('q') or key == ord('Q'):
+                break
+
+    cap.release()
+    # Closes all the frames
+    cv2.destroyAllWindows()
