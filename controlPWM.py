@@ -46,6 +46,11 @@ def procesoAuxiliar(recibir1):
 				orden = recibir1.recv()
 				# print(orden)
 
+				# if self.cruzandoBocacalle:
+				# 	if 'P_' in orden:
+				# 		if orden == 'P_forward':
+				# 			self._forward()
+
 				if orden == 'exit':
 					sys.exit()
 				if orden == 'stopAndIgnore':
@@ -55,15 +60,17 @@ def procesoAuxiliar(recibir1):
 						if recibir1.recv() == 'exit':
 							self._stop()
 							sys.exit()
-				elif orden == 'forwardLong':
-					self._forward()
-					while True:
-						ordenaux = recibir1.recv()
-						if ordenaux == 'endForwardLong':
-							break
-						elif ordenaux == 'exit':
-							self._stop()
-							sys.exit()
+				# elif orden == 'cruzandoBocacallle':
+				# 	self.cruzandoBocacalle = True
+				# elif orden == 'forwardLong':
+				# 	self._forward()
+				# 	while True:
+				# 		ordenaux = recibir1.recv()
+				# 		if ordenaux == 'endForwardLong':
+				# 			break
+				# 		elif ordenaux == 'exit':
+				# 			self._stop()
+				# 			sys.exit()
 					# time.sleep(0.5)
 					# while recibir1.poll():
 					# 	recibir1.recv()

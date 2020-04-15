@@ -74,6 +74,7 @@ def procesoPrincipal(enviar1):
             self.arrayCircular = np.zeros(5)
 
             self.lastOrderCruzar = False
+            self.contandoFramesCruzando = 0
         
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -476,14 +477,14 @@ def procesoPrincipal(enviar1):
             x_mid_int=int(round(x_mid))
             self.ubicacion_punto_verde = x_mid_int
             # print(self.ubicacion_punto_verde)
-            distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-            if x.size > 50 and distancia_al_centro < 320:    
-                m,b = np.polyfit(x,y,1)
-                print('pendiente:',m)
-                if m < 0:
-                    self.girandoHaciaDerecha = True
-                else:
-                    self.girandoHaciaDerecha = False
+            # distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
+            # if x.size > 50 and distancia_al_centro < 320:    
+            #     m,b = np.polyfit(x,y,1)
+            #     print('pendiente:',m)
+            #     if m < 0:
+            #         self.girandoHaciaDerecha = True
+            #     else:
+            #         self.girandoHaciaDerecha = False
             # #     print('##########################' ,m,b)
             #     cv2.line(mask_green,(int(-b/m),0),(int((160-b)/m),160),(255,255,255), 3)
             # #     real_m = 160/(((160-b)/m)+b/m)
@@ -508,8 +509,35 @@ def procesoPrincipal(enviar1):
                 self._moverVehiculoEnLineaVerde() #Sigue derecho
             
         def _moverVehiculoEnLineaVerde(self):
-
-            distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
+            if not self.lastOrderCruzar:
+                distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
+                self.contandoFramesCruzando = 0
+            else:
+                distancia_al_centro_inferior = (self.width/2) - self.ubicacion_punto_verde
+                if abs(distancia_al_centro_inferior) < 100:
+                    self.contandoFramesCruzando += 1
+                if self.contandoFramesCruzando >= 50:
+                    self.lastOrderCruzar = False
+                    distancia_al_centro = distancia_al_centro_inferior
+                else:
+                    print('viendo arriba, cuenta: ', self.contandoFramesCruzando)
+                    frame = copy.deepcopy(self.frameCompleto[0:160,0:int(self.width)])
+                    lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
+                    upper_green = np.array([80, 230, 140])
+                    frame = cv2.GaussianBlur(frame, (3, 3), 0)
+                    hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                    mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
+                    y, x = np.where(mask_green == 255)
+                    try:
+                        if len(x) < 100:
+                            x_mid = 0
+                        else:
+                            x_mid= statistics.median(x)
+                    except:
+                        x_mid = 0
+                    x_mid_int=int(round(x_mid))
+                    ubicacion_punto_verde_superior = x_mid_int
+                    distancia_al_centro = (self.width/2) - ubicacion_punto_verde_superior
 
             # self.stoppingCounter +=1
             # if self.stoppingCounter == 1:
@@ -566,9 +594,6 @@ def procesoPrincipal(enviar1):
                         self.contandoFramesParado = 0
             
             else:
-                if abs(distancia_al_centro) < 200 and self.lastOrderCruzar:
-                    self.lastOrderCruzar = False
-                    enviar1.send('endForwardLong')
                 limite1 = 40
                 limite2 = 170
                 distancia_al_centro -= 11
@@ -617,7 +642,7 @@ def procesoPrincipal(enviar1):
             # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
             # vel_suave_min=1700
             # forward(self.miPwm, vel_suave_min)
-            enviar1.send('forwardLong')
+            # enviar1.send('forwardLong')
             self.lastOrderCruzar = True
             # controladorPwm.actualizarOrden('stop')
             # stop(self.miPwm)
