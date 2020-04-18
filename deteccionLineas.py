@@ -73,10 +73,10 @@ def procesoPrincipal(enviar1):
             self.indiceCircular = 0
             self.arrayCircular = np.zeros(5)
 
-            self.lastOrderCruzar = False
+            self.estuveCruzandoBocacalle = False
             self.contandoFramesCruzando = 0
             self.tiempoCruzandoACiegasInicial = 0
-            self.estoyPerdido = False
+            self.siguiendoLineaSuperior = False
         
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -296,20 +296,20 @@ def procesoPrincipal(enviar1):
             
         def _moverVehiculoEnLineaVerde(self):
             # print('entrando a la funcion de mover en linea verde')
-            if not self.lastOrderCruzar:
+            if not self.siguiendoLineaSuperior:
                 distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
                 self.contandoFramesCruzando = 0
                 # print('NORMAL SIN BOCACALLE')
             else:
                 # print('verificando condicion')
-                if (time.time() - self.tiempoCruzandoACiegasInicial) <3.5:
+                if (time.time() - self.tiempoCruzandoACiegasInicial) <1:
                     # print('cruzando a ciegas')
                     return
                 distancia_al_centro_inferior = (self.width/2) - self.ubicacion_punto_verde
                 if abs(distancia_al_centro_inferior) < 100:
                     self.contandoFramesCruzando += 1
                 if self.contandoFramesCruzando >= 15:
-                    self.lastOrderCruzar = False
+                    self.siguiendoLineaSuperior = False
                     print('//////////////////////////////////////// LIMPIANDO FLAG')
                     distancia_al_centro = distancia_al_centro_inferior
                 else:
@@ -332,10 +332,9 @@ def procesoPrincipal(enviar1):
                     ubicacion_punto_verde_superior = x_mid_int
                     distancia_al_centro = (self.width/2) - ubicacion_punto_verde_superior
 
-            print('verificando1', self.lastOrderCruzar)
+            print('verificando1')
             if abs(distancia_al_centro) == 320:
                 print('verificando2')
-                self.estoyPerdido = True
                 if self.contandoFramesParado != 3:
                     enviar1.send('stop')
                     self.contandoFramesParado += 1
@@ -354,20 +353,13 @@ def procesoPrincipal(enviar1):
             
             else:
                 print('verificando3', distancia_al_centro)
-                self.estoyPerdido = False
                 limite1 = 40
                 limite2 = 170
                 distancia_al_centro -= 11
                 self.contandoFramesParado = 0
-                # print('distancia al centro: ', distancia_al_centro, self.ubicacion_punto_verde)
                 if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
-                    # print("Izquierda Suave")
                     enviar1.send('giroSuaIzq')
-                    # controladorPwm.actualizarOrden('giroSuaIzq')
-                    # self.stoppingCounterMax = 2
-                    # giroIzquierdaSuave(self.miPwm, vel_suave_max, vel_suave_min)
                 elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
-                    # giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
                     enviar1.send('giroSuaDer')
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
                         enviar1.send('giroBruDer')
@@ -383,16 +375,20 @@ def procesoPrincipal(enviar1):
                 self.ultima_distancia = int(statistics.median(self.ultima_distancia_arr)) 
                 self. indice_ultima_posicion_3 += 1
 
+            self.estuveCruzandoBocacalle = False
+
         def _moverVehiculoCruzarBocacalle(self):
-            print('entro', self.estoyPerdido, (time.time()-self.tiempoCruzandoACiegasInicial), self.lastOrderCruzar)
-            if not self.lastOrderCruzar:
+            print('entro', (time.time()-self.tiempoCruzandoACiegasInicial), self.estuveCruzandoBocacalle, self.siguiendoLineaSuperior)
+            if not self.estuveCruzandoBocacalle:
                 enviar1.send('forwardACiegas')
                 self.tiempoCruzandoACiegasInicial = time.time()
-            elif ((time.time()-self.tiempoCruzandoACiegasInicial > 3.5) and self.estoyPerdido):
+                self.siguiendoLineaSuperior = True
+            elif (time.time()-self.tiempoCruzandoACiegasInicial > 1):
                 print('entro2')
                 enviar1.send('forwardACiegas')
                 self.tiempoCruzandoACiegasInicial = time.time()
-            self.lastOrderCruzar = True
+                self.siguiendoLineaSuperior = True
+            self.estuveCruzandoBocacalle = True
 
         def _buscarDeposito(self):
             self._buscar_qr(self.frameCompleto)

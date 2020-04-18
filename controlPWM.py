@@ -45,7 +45,7 @@ def procesoAuxiliar(recibir1):
 					time.sleep(5)
 				elif orden == 'forwardACiegas':
 					self._forward()
-					time.sleep(3)
+					time.sleep(0.5)
 					self._stop()
 					print('listo para volver a avanzar')
 				elif orden == 'stop':
@@ -56,23 +56,23 @@ def procesoAuxiliar(recibir1):
 					self._stop()
 				elif orden == 'backward':
 					self._backward()
-					time.sleep(0.2)
+					time.sleep(0.3)
 					self._stop()
 				elif orden == 'giroBruDer':
 					self._giroDerechaBrusco()
-					time.sleep(0.1)
+					time.sleep(0.2)
 					self._stop()
 				elif orden == 'giroBruIzq':
 					self._giroIzquierdaBrusco()
-					time.sleep(0.1)
+					time.sleep(0.2)
 					self._stop()
 				elif orden == 'giroSuaDer':
 					self._giroDerechaSuave()
-					time.sleep(0.1)
+					time.sleep(0.2)
 					self._stop()
 				elif orden == 'giroSuaIzq':
 					self._giroIzquierdaSuave()
-					time.sleep(0.1)
+					time.sleep(0.2)
 					self._stop()
 				while recibir1.poll():
 						if recibir1.recv() == 'exit':
@@ -134,7 +134,7 @@ def procesoAuxiliar(recibir1):
 			self.pwm.set_pwm(5, 0, 0) #Delante Izquierda
 
 	controladorPwm = controladorPWM()
-	controladorPwm.setear_parametros(servo_fw=950, servo_bw=1200, 
+	controladorPwm.setear_parametros(servo_fw=1100, servo_bw=1200, 
                          servo_suave_min=2100, servo_suave_max=400, 
                          servo_brusco_min=800, servo_brusco_max=2400)
 	controladorPwm.start_loop()
