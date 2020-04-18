@@ -120,7 +120,6 @@ def procesoPrincipal(enviar1):
             cv2.waitKey(10)
             barcodes = pyzbar.decode(frame)
             if barcodes:
-                # print('asdad$$$$$$$$$$$$$$$$$$$$$$$           ', barcodes[0])
                 cv2.destroyWindow('buscandoQR')
                 barcodeData = barcodes[0].data.decode("utf-8")
                 if barcodeData[0] == 'I':
@@ -129,30 +128,17 @@ def procesoPrincipal(enviar1):
                     self.tiempoDeEsperaInicial = time.time()
 
         def _buscar_qr(self, frame):
-            # global frameGlobal
-            # frameGlobal=frame
-            # enviar2.send('frame') #Todo: make frame global to increase speed
             barcodes = pyzbar.decode(frame)
-            # barcodes = ['A1']
             if barcodes:
                 qr_encontrado = barcodes[0].data.decode("utf-8")
-                # print(qr_encontrado)
-                # qr_encontrado = 'A1'
-                # ToDo: a qr_encontrado falta sacarle la 'F' de fin para compara contra self.depositoABuscar
                 if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar and not self.listoParaReiniciar:
-                # if qr_encontrado == self.depositoABuscar:
                     print('Dejando paquete!!')
                     self.depositoHallado = -1
                     enviar1.send('stopAndIgnore')
-                    # controladorPwm.actualizarOrden('stop')
-                    # stop(self.miPwm)
-                    # cv2.waitKey(15000)
                     self.listoParaReiniciar = True
                 if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
                     print("inicio hallado")
-                    enviar1.send('stop')
-                    # controladorPwm.actualizarOrden('stop')
-                    # stop(self.miPwm)
+                    enviar1.send('stopAndIgnore')
                     self.listoParaReiniciar = False
                     self.tiempoDeEsperaInicial = -1
                     self.depositoABuscar = -1
@@ -161,11 +147,9 @@ def procesoPrincipal(enviar1):
             #Defino parametros HSV para detectar color rojo 
             lower_red = np.array([170, 179, 0])
             upper_red = np.array([255, 255, 255])
-
             #Aplico filtro de color con los parametros ya definidos
             hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
             mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
-            
             #Proceso
             if np.mean(mask_red) > 15:
                 return True
@@ -242,212 +226,12 @@ def procesoPrincipal(enviar1):
             else:
                 return class_ids, confidences
 
-        def _analizarFrameForFilasColumnas(self, frameOriginal):
-            # Cortamos el frame a la mitad inferior
-            # frameOriginalRecortado = self._prepararFrame(frame)
-            # Aplicamos filtros, entre ellos canny
-            frame = copy.deepcopy(frameOriginal)
-
-            frameConFiltro = self._aplicarFiltrosMascaras(frame)
-            # cv2.imshow('frameParaProbar', frameConFiltro)
-
-            # Aca solo creo un numpy array con las mismas dimensiones que el frame original recortado
-            self.frameProcesado = frame
-
-            # Analizo con hough las filas o columnas 
-            for fila in self.filasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
-                # for columna in range(16):
-                for columna in self.columnasDeseadas:
-                    porcionFrameConFiltro, porcionFrame = self._obtenerPorcionesFrame(frame, frameConFiltro, fila, columna)
-                    self._procesarPorcionFrame(porcionFrameConFiltro, porcionFrame, fila, columna) #ToDo: si comentamos la linea que reconstruye el retorno no es necesario
-                    # self._reconstruirFrame(porcionFrameProcesado, fila, columna)
-            # for columna in self.columnasDeseadas: #Recorre de abajo para arriba, de izquierda a derecha
-            #     for fila in range(6):
-            #         if fila not in self.filasDeseadas:
-            #             porcionFrame, porcionFrame = self._obtenerPorcionesFrame(frame, frameConFiltro, fila, columna)
-            #             porcionFrameProcesado = self._procesarPorcionFrame(porcionFrame, porcionFrame, fila, columna)
-            #             self._reconstruirFrame(porcionFrameProcesado, fila, columna)
-
-        def _prepararFrame (self, frame):
-            # frame = cv2.flip(frame, flipCode=-1)
-            frame = frame[int(self.height*0.5):int(self.height),0:int(self.width)]#frame = frame[0:int(self.height*0.5),0:int(self.width)]
-            return frame
-
-        def _aplicarFiltrosMascaras (self, frame):
-            #Defino parametros HLS o HSV para eliminar fondo 
-            lower_black = np.array([0, 0, 0]) #108 6 17     40 16 37
-            upper_black = np.array([255, 255, 100 ]) #HSV 255, 255, 90 #HLS[150, 75, 255]
-
-            #Aplico filtro de color con los parametros ya definidos
-            hsv_right = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV) #BRG2HLS
-            mask_right = cv2.inRange(hsv_right, lower_black, upper_black) #frame
-            mask_right = np.invert(mask_right)
-            res_right = cv2.bitwise_and(frame, frame, mask=mask_right)
-            #cv2.imshow('framefilter', res_right)
-
-            #Aplico filtro pasa bajos y deteccion de lineas por Canny
-            '''
-            kernel = np.ones((3,3), np.uint8)
-            frame_e = cv2.erode(frame, kernel, iterations=1)
-            gray_right = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY) 
-            (thresh, bw_right) = cv2.threshold(gray_right, 40, 255, cv2.THRESH_BINARY)
-            #dif_gray_right = cv2.GaussianBlur(bw_right, (1, 1), 0) #(mask, (5, 5), 0)
-            cv2.imshow('framefilterdif', frame_e)
-            canny_right = cv2.Canny(bw_right, 25, 175) # 25, 175)
-            cv2.imshow('framefilter', canny_right)
-            '''
-            #Umbral Dinamico
-            kernel = np.ones((3,3), np.uint8)
-            frame_e = cv2.erode(res_right, kernel, iterations=1)
-            gray = cv2.cvtColor(frame_e, cv2.COLOR_BGR2GRAY)
-            gray = cv2.GaussianBlur(gray, (3, 3), 0)
-            gray = cv2.medianBlur(gray, 5)
-            dst2 = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 9, 3)
-            # cv2.imshow('framefilterdif', dst2)
-            dif_gray_right = cv2.GaussianBlur(dst2, (11, 11), 0) #(mask, (5, 5), 0)
-            #cv2.imshow('framefilterdif', frame_e)
-            canny_right = cv2.Canny(dif_gray_right, 25, 175) # 25, 175)
-            kernel = np.ones((7,7), np.uint8)
-            canny_right = cv2.morphologyEx(canny_right, cv2.MORPH_CLOSE, kernel)
-            kernel = np.ones((3,3), np.uint8)
-            canny_right = cv2.erode(canny_right, kernel, iterations=1)
-            #cv2.imshow('framefilter', canny_right)
-            return canny_right
-
-        def _obtenerPorcionesFrame (self, frame, frameConFiltro, row, column):
-            frameConFiltroCut=frameConFiltro[(440-row*40):(480-row*40),(40*column):(40+40*column)]
-            frameCut=frame[(440-row*40):(480-row*40),(40*column):(40+40*column)]
-            return frameConFiltroCut, frameCut
-
-        def _procesarPorcionFrame (self, porcionFrameConFiltro, porcionFrame, fila, columna):
-
-            try:
-                # porcionFrame = canny_right
-                ## Aplico Transformada de Hough
-                lines = cv2.HoughLinesP(porcionFrameConFiltro, 1, np.pi / 180, 10, minLineLength=0, maxLineGap=1) #(canny, 1, np.pi / 180, 30, minLineLength=15, maxLineGap=150)
-
-                # Draw lines on the image
-                if lines is not None:
-                    cant_lineas=len(lines)
-                    # print(cant_lineas)
-                    
-                    if cant_lineas>100: # print('Se detecto una curva')
-                        porcionFrame[:,:,2] = porcionFrame[:,:,2] + 30 #Pintamos de color rojo las porciones con curvas
-                    else: # print('Se detecto una linea')
-                        x1M=0
-                        x1M_2=0
-                        y1M=0
-
-                        for line in lines:
-                            x1, y1, x2, y2 = line[0]
-
-                            if(x1>x1M and fila==1):
-                                x1M=x1
-                                self.right_points_up = [x1+40*columna, y1+40*(5-fila)]
-                                self.right_points_down = [x2, y2]
-                            if(columna<7 and fila==1):
-                                # print(x1+40*column)
-                                self.left_points_up = [x1+40*columna, y1+40*(5-fila)]
-                                self.left_points_down = [x2, y2]
-                            if(x1>x1M_2 and fila==10):
-                                x1M_2=x1
-                                self.right_points_up_2 = [x1+40*columna, y1+40*(5-fila)]
-                                self.right_points_down_2 = [x2, y2]
-                            if(columna<7 and fila==10):
-                                # print(x1+40*column)
-                                self.left_points_up_2 = [x1+40*columna, y1+40*(5-fila)]
-                                self.left_points_down_2 = [x2, y2] 
-
-                            # Guardamos la posicion del punto superior (frente al vehiculo)
-                            # if self.dentroCurvaDerecha:
-                            #     if (columna is int(self.last/40)) and y1>y1M:
-                            #     # if (self.last*0.7< (x1+40*columna) < self.last*1.3) and y1>y1M:
-                            #         y1M=y1
-                            #         self.up_point = [self.last,y1+40*(5-fila)]
-                                
-                            # x1m=x1
-                            # right_points = [(x1,y1), (x2,y2)]
-
-                            # cv2.line(porcionFrame,(x1,y1),(x2,y2),(0,0,255),2) # ToDo: Comentar esta linea
-                            # cv2.line(porcionFrame,(porcionFrame.shape[1]-1,x1),(0,y1),255,2)
-
-                        # ToDO: comentar las dos lineas siguientes que pintan porciones de frame
-                        porcionFrame[:,:,0] = porcionFrame[:,:,0]+30 #Si se detecto una linea pintar el frame de color azul
-                else:
-                    porcionFrame[:,:,1] = porcionFrame[:,:,1] + 30 #Si no se detecto ninguna linea, pintamos de color verde  
-
-            except Exception as e:
-                print(e)
-            # return porcionFrame # ToDo: Este retorno no es mas necesario en la version final
-
-        def _reconstruirFrame(self, porcionFrameProcesado, fila, columna):
-            for x in range(40): #filas
-                for j in range(40): #columnas
-                    self.frameProcesado[440-fila*40+x][0+40*columna+j] = porcionFrameProcesado[x][j]
-
-        def _detectarBocacalle(self):
-            if self.bocacalleDetectada:
-                cv2.line(self.frameProcesado,(self.left_points_up_last,420),(self.right_points_up_last,420),(0,255,0),2)
-            else:
-                cv2.line(self.frameProcesado,(self.left_points_up[0],420),(self.right_points_up[0],420),(255,255,255),2)
-
-            # cv2.line(self.frameProcesado,(self.left_points_up_2[0],20),(self.right_points_up_2[0],20),(255,255,255),2)
-
-            dist_line_down = self.right_points_up[0] - self.left_points_up[0]
-            dist_line_up = self.right_points_up_2[0] - self.left_points_up_2[0]
-
-            # print('dist_line_down: ', dist_line_down)
-                
-            if ((dist_line_down > 350)): #Si en la fila inferior de la camara, la distancia entre las lineas negras laterales es mayor a 200
-                if not self.bocacalleDetectada: #Y la bandera no esta seteada aun
-                    self.right_points_up_last = self.right_points_up_med #Guarda el ultimo valor de la mediana cuando entra en bocacalle por unica vez
-                    self.left_points_up_last = self.left_points_up_med 
-                # print('BOCACALLE DETECTADA!')
-                self.bocacalleDetectada=True #Seteamos la bandera
-                # ToDo: Aca podemos setear la fila superior como la deseada
-                self.filasDeseadas = [1,10]
-                if dist_line_up < 270: #Si la distancia entre lineas negras en la fila superior de la camara, es menor a 200, ya encontro la proxima calle
-                    self.right_points_up_last = self.right_points_up_2[0] #Voy guardando los puntos superiores
-                    self.left_points_up_last = self.left_points_up_2[0]
-
-            else: #Si no se detecto bocacalle todavia
-                self.filasDeseadas = [1]
-                if (self.indice_ultima_posicion_2 is 10): #Resetea el indice del buffer circular
-                    self.indice_ultima_posicion_2 = 0
-                self.right_points_up_arr[self.indice_ultima_posicion_2] = self.right_points_up[0] #Agrega los valores al buffer circular
-                self.left_points_up_arr[self.indice_ultima_posicion_2] = self.left_points_up[0]
-                self.right_points_up_med = int(statistics.median(self.right_points_up_arr)) #Calculamos la mediana del buffer con los 10 ultimos puntos
-                self.left_points_up_med = int(statistics.median(self.left_points_up_arr))
-                self.indice_ultima_posicion_2 += 1
-
-                if ((self.right_points_up_med*0.9 < self.right_points_up[0] < self.right_points_up_med*1.1) and (self.left_points_up_med*0.9 < self.left_points_up[0] < self.left_points_up_med*1.1)):
-                    # print('CALLE DETECTADA!')
-                    self.bocacalleDetectada=False
-                
-        def _dibujarGrilla(self):
-            # Grid lines at these intervals (in pixels)
-            # dx and dy can be different
-            dx, dy = 40,40
-            # Custom (rgb) grid color
-            grid_color = [255,0,0]# [0,0,0]
-            # Modify the image to include the grid
-            self.frameProcesado[:,::dy,:] = grid_color
-            self.frameProcesado[::dx,:,:] = grid_color
-
         def _detectarLineaVerde(self, frameOriginal):
             #Corto el frame
-            # frame = self.frameProcesado
             frame = frameOriginal[320:480,0:int(self.width)] #320,480
-            # cv2.imshow('FrameOriginalRecortado', frame)
             #Defino parametros HSV para detectar color verde 
-            lower_green_noche = np.array([20, 60, 100])
-            upper_green_noche = np.array([80, 230, 140])
-            lower_green_dia = np.array([20, 40, 100])
-            upper_green_dia = np.array([80, 230, 140])
-            lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100]) #lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
-            # lower_green = np.array([40, 50, 80])
+            lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
             upper_green = np.array([80, 230, 140])
-            
             #Aplico filtro de color con los parametros ya definidos
             frame = cv2.GaussianBlur(frame, (3, 3), 0)
             hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -548,59 +332,22 @@ def procesoPrincipal(enviar1):
                     ubicacion_punto_verde_superior = x_mid_int
                     distancia_al_centro = (self.width/2) - ubicacion_punto_verde_superior
 
-            # self.stoppingCounter +=1
-            # if self.stoppingCounter == 1:
-            #     stop(self.miPwm)
-            # else:
-            #     if self.stoppingCounter >= self.stoppingCounterMax:
-            #         self.stoppingCounter = 0
-            
-                #cv2.line(self.frameProcesado,(int(ubicacion_punto_central),0),(int(ubicacion_punto_central),240),(0,0,255),2)
-                #cv2.line(self.frameProcesado,(int(320),0),(int(320),240),(0,255,255),2)
-                # print(distancia_al_centro)
-
-                # vel_brusca_max=2450
-                # vel_brusca_min=1000
-                # # vel_brusca_max_perdido=2500
-                # # vel_brusca_min_perdido=1400
-                # vel_suave_max=1400
-                # vel_suave_min=700
-                # vel_forward = 1200
-            
             print('verificando1', self.lastOrderCruzar)
             if abs(distancia_al_centro) == 320:
                 print('verificando2')
                 self.estoyPerdido = True
                 if self.contandoFramesParado != 3:
-                    # stop(self.miPwm)
                     enviar1.send('stop')
-                    # controladorPwm.actualizarOrden('stop')
                     self.contandoFramesParado += 1
                     self.contandoFramesBackward = 0
                 else:
-                    # if self.girandoHaciaDerecha:
-                    #     enviar1.send('giroBruDer')
-                    # else:
-                    #     enviar1.send('giroBruIzq')
-                    # controladorPwm.actualizarOrden('backward')
-                    # enviar1.send('backward')
-                    # backward(self.miPwm, vel_forward)
                     print('/////////////////////////////////////////////////////////     ', self.ultima_distancia)
-
                     if self.ultima_distancia <= -250:
-                    #     print('PERDIDO- Derecha brusco')
                         enviar1.send('giroBruDer')
-                    #     giroDerechaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
                     elif self.ultima_distancia >= 250:
                         enviar1.send('giroBruIzq')
-                    #     print('PERDIDO- Izquierda brusco')
-                    #     giroIzquierdaBrusco(self.miPwm, vel_brusca_min_perdido, vel_brusca_min_perdido)
                     else:
                         enviar1.send('backward')
-                        # if self.girandoHaciaDerecha:
-                        #     enviar1.send('giroBruDer')
-                        # else:
-                        #     enviar1.send('giroBruIzq')
                     self.contandoFramesBackward += 1
                     if self.contandoFramesBackward == 2:
                         self.contandoFramesParado = 0
@@ -622,27 +369,12 @@ def procesoPrincipal(enviar1):
                 elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
                     # giroDerechaSuave(self.miPwm, vel_suave_min, vel_suave_max)
                     enviar1.send('giroSuaDer')
-                    # print("Derecha Suave")
-                    # controladorPwm.actualizarOrden('giroSuaDer')
-                    # self.stoppingCounterMax = 2
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
-                        # giroDerechaBrusco(self.miPwm, vel_brusca_min, vel_brusca_max)
-                        # print("Derecha Brusco")
                         enviar1.send('giroBruDer')
-                        # controladorPwm.actualizarOrden('giroBruDer')
-                        # self.stoppingCounterMax = 2
                 elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
-                        # giroIzquierdaBrusco(self.miPwm, vel_brusca_max,vel_brusca_min)
-                        # print("Izquierda Brusco")
                         enviar1.send('giroBruIzq')
-                        # controladorPwm.actualizarOrden('giroBruIzq')
-                        # self.stoppingCounterMax = 2
                 else:
-                    # self.stoppingCounterMax = 2
-                    # forward(self.miPwm, vel_forward)
-                    # print('forward')
                     enviar1.send('forward')
-                    # controladorPwm.actualizarOrden('forward')
 
             if abs(distancia_al_centro) < 320:
                 if (self.indice_ultima_posicion_3 is 20): #Resetea el indice del buffer circular
@@ -650,13 +382,8 @@ def procesoPrincipal(enviar1):
                 self.ultima_distancia_arr[self.indice_ultima_posicion_3] = distancia_al_centro #Agrega los valores al buffer circular
                 self.ultima_distancia = int(statistics.median(self.ultima_distancia_arr)) 
                 self. indice_ultima_posicion_3 += 1
-                # print(self.ultima_distancia)
 
         def _moverVehiculoCruzarBocacalle(self):
-            # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-            # vel_suave_min=1700
-            # forward(self.miPwm, vel_suave_min)
-            # if not self.lastOrderCruzar:
             print('entro', self.estoyPerdido, (time.time()-self.tiempoCruzandoACiegasInicial), self.lastOrderCruzar)
             if not self.lastOrderCruzar:
                 enviar1.send('forwardACiegas')
@@ -666,11 +393,8 @@ def procesoPrincipal(enviar1):
                 enviar1.send('forwardACiegas')
                 self.tiempoCruzandoACiegasInicial = time.time()
             self.lastOrderCruzar = True
-            # controladorPwm.actualizarOrden('stop')
-            # stop(self.miPwm)
 
         def _buscarDeposito(self):
-            # frameMitad = self.frameCompleto[int(self.height*0.5):int(self.height),0:int(self.width)] #Mitad inferior
             self._buscar_qr(self.frameCompleto)
 
         def _actualizarValorSaturacion(self):
@@ -679,11 +403,8 @@ def procesoPrincipal(enviar1):
             if self.indiceCircular == 5:
                 self.indiceCircular = 0
             self.multiplicadorLuminosidadAmbiente = np.mean(self.arrayCircular)
-            # print(self.multiplicadorLuminosidadAmbiente)
-            # 
 
         def _detectarBocacalleVerde(self):
-
             frame = copy.deepcopy(self.frameCompleto)
             lower_green = np.array([40, int(20*1.8), 100])
             upper_green = np.array([80, 230, 140])
@@ -692,7 +413,6 @@ def procesoPrincipal(enviar1):
             mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
             mask_green = mask_green/255
             mask_green.astype(bool)
-
             for i in range(2):
                 suficientesPuntos = False
                 diagonalNoCruza = False
@@ -765,7 +485,6 @@ def procesoPrincipal(enviar1):
                         self.bocacalleDetectada = False
 
         def comenzar(self):
-            # try:
             # En el proximo loop calcularemos la intensidad de luz ambiente para ajustar filtros
             while self.cap.isOpened():
                 ret, frameCompleto = self.cap.read()
@@ -898,48 +617,19 @@ def procesoPrincipal(enviar1):
             # Closes all the frames
             cv2.destroyAllWindows()
             exit()
-        
-            # except Exception as e:
-            #     print(e)
-            #     self.cap.release()
-            #     cv2.destroyAllWindows()
-            #     stop(self.miPwm)
-            #     exit()
 
     vehiculoAutonomo = VehiculoAutonomo()
     vehiculoAutonomo.comenzar()
 
-def procesoAuxiliar2(recibir2):
-    def loop():
-        while True:
-            # time.sleep(0.1)
-            frame = recibir2.recv()
-            # print('$$$$$$$$$$$$$$$$$$$$$$$$: ',frameGlobal)
-            # barcodes = pyzbar.decode(frame)
-            # print(barcodes.data)
-
-    loop()
 
 if __name__ == "__main__":
     out = cv2.VideoWriter('outputGirandoPistaUnoOpt2.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
     out2 = cv2.VideoWriter('outputGirandoPistaUnoOpt3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,160))
 
     enviar1, recibir1 = Pipe()
-    # enviar2, recibir2 = Pipe()
     
     P_principal = Process(target=procesoPrincipal, args=(enviar1,))
     P_auxiliar = Process(target=procesoAuxiliar, args=(recibir1,))
-    # P_auxiliar2 = Process(target=procesoAuxiliar2, args=(recibir2,))
     
     P_principal.start()
     P_auxiliar.start()
-    # P_auxiliar2.start()
-
-
-    # controladorPwm = controladorPWM()
-    # controladorPwm.start(servo_fw=1200, servo_bw=1300, 
-    #                      servo_suave_min=1700, servo_suave_max=500, 
-    #                      servo_brusco_min=1000, servo_brusco_max=2450, tiempo=0.1)
-
-    # vehiculoAutonomo = VehiculoAutonomo()
-    # vehiculoAutonomo.comenzar()
