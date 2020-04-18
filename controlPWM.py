@@ -53,27 +53,26 @@ def procesoAuxiliar(recibir1):
 
 				if orden == 'exit':
 					sys.exit()
-				if orden == 'stopAndIgnore':
+				elif orden == 'stopAndIgnore':
 					self._stop()
 					time.sleep(5)
-					while recibir1.poll():
-						if recibir1.recv() == 'exit':
-							self._stop()
-							sys.exit()
+					# while recibir1.poll():
+					# 	if recibir1.recv() == 'exit':
+					# 		self._stop()
+					# 		sys.exit()
 				# elif orden == 'cruzandoBocacallle':
 				# 	self.cruzandoBocacalle = True
-				# elif orden == 'forwardLong':
-				# 	self._forward()
-				# 	while True:
-				# 		ordenaux = recibir1.recv()
-				# 		if ordenaux == 'endForwardLong':
-				# 			break
-				# 		elif ordenaux == 'exit':
-				# 			self._stop()
-				# 			sys.exit()
-					# time.sleep(0.5)
+				elif orden == 'forwardACiegas':
+					self._forward()
+					time.sleep(3)
+					self._stop()
+					# while True:
 					# while recibir1.poll():
-					# 	recibir1.recv()
+					# 	if recibir1.recv() == 'exit':
+					# 		self._stop()
+					# 		sys.exit()
+
+					print('listo para volver a avanzar')
 				elif orden == 'stop':
 					self._stop()
 					# time.sleep(0.3)
@@ -83,16 +82,32 @@ def procesoAuxiliar(recibir1):
 					# 		sys.exit()
 				elif orden == 'forward':
 					self._forward()
+					time.sleep(0.2)
+					self._stop()
 				elif orden == 'backward':
 					self._backward()
+					time.sleep(0.2)
+					self._stop()
 				elif orden == 'giroBruDer':
 					self._giroDerechaBrusco()
+					time.sleep(0.1)
+					self._stop()
 				elif orden == 'giroBruIzq':
 					self._giroIzquierdaBrusco()
+					time.sleep(0.1)
+					self._stop()
 				elif orden == 'giroSuaDer':
 					self._giroDerechaSuave()
+					time.sleep(0.1)
+					self._stop()
 				elif orden == 'giroSuaIzq':
 					self._giroIzquierdaSuave()
+					time.sleep(0.1)
+					self._stop()
+				while recibir1.poll():
+						if recibir1.recv() == 'exit':
+							self._stop()
+							sys.exit()
 
 		def _forward(self):
 			self.pwm.set_pwm(2, 0, self.servo_min) #Atras Derecha
@@ -149,7 +164,7 @@ def procesoAuxiliar(recibir1):
 			self.pwm.set_pwm(5, 0, 0) #Delante Izquierda
 
 	controladorPwm = controladorPWM()
-	controladorPwm.setear_parametros(servo_fw=850, servo_bw=1200, 
+	controladorPwm.setear_parametros(servo_fw=950, servo_bw=1200, 
                          servo_suave_min=2100, servo_suave_max=400, 
                          servo_brusco_min=800, servo_brusco_max=2400, tiempo=0.02)
 	controladorPwm.start_loop()

@@ -75,6 +75,8 @@ def procesoPrincipal(enviar1):
 
             self.lastOrderCruzar = False
             self.contandoFramesCruzando = 0
+            self.tiempoCruzandoACiegasInicial = 0
+            self.estoyPerdido = False
         
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -501,7 +503,7 @@ def procesoPrincipal(enviar1):
                 elif (self.depositoHallado == self.depositoABuscar) and (self.depositoHallado != -1):
                     self._moverVehiculoEnLineaVerde() #Doblar
                 elif (self.depositoHallado != self.depositoABuscar) and (self.depositoHallado != -1):
-                    print('########################################################################CRUZAR')
+                    # print('########################################################################CRUZAR')
                     self._moverVehiculoCruzarBocacalle() #Seguir derecho
 
             # Si no detecto bocacalle estoy girando en la linea verde nuevamente o recien comenzando el programa
@@ -509,18 +511,25 @@ def procesoPrincipal(enviar1):
                 self._moverVehiculoEnLineaVerde() #Sigue derecho
             
         def _moverVehiculoEnLineaVerde(self):
+            # print('entrando a la funcion de mover en linea verde')
             if not self.lastOrderCruzar:
                 distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
                 self.contandoFramesCruzando = 0
+                # print('NORMAL SIN BOCACALLE')
             else:
+                # print('verificando condicion')
+                if (time.time() - self.tiempoCruzandoACiegasInicial) <3.5:
+                    # print('cruzando a ciegas')
+                    return
                 distancia_al_centro_inferior = (self.width/2) - self.ubicacion_punto_verde
                 if abs(distancia_al_centro_inferior) < 100:
                     self.contandoFramesCruzando += 1
-                if self.contandoFramesCruzando >= 50:
+                if self.contandoFramesCruzando >= 15:
                     self.lastOrderCruzar = False
+                    print('//////////////////////////////////////// LIMPIANDO FLAG')
                     distancia_al_centro = distancia_al_centro_inferior
                 else:
-                    print('viendo arriba, cuenta: ', self.contandoFramesCruzando)
+                    # print('viendo arriba, cuenta: ', self.contandoFramesCruzando)
                     frame = copy.deepcopy(self.frameCompleto[0:160,0:int(self.width)])
                     lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
                     upper_green = np.array([80, 230, 140])
@@ -557,8 +566,11 @@ def procesoPrincipal(enviar1):
                 # vel_suave_max=1400
                 # vel_suave_min=700
                 # vel_forward = 1200
-
+            
+            print('verificando1', self.lastOrderCruzar)
             if abs(distancia_al_centro) == 320:
+                print('verificando2')
+                self.estoyPerdido = True
                 if self.contandoFramesParado != 3:
                     # stop(self.miPwm)
                     enviar1.send('stop')
@@ -594,6 +606,8 @@ def procesoPrincipal(enviar1):
                         self.contandoFramesParado = 0
             
             else:
+                print('verificando3', distancia_al_centro)
+                self.estoyPerdido = False
                 limite1 = 40
                 limite2 = 170
                 distancia_al_centro -= 11
@@ -642,7 +656,15 @@ def procesoPrincipal(enviar1):
             # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
             # vel_suave_min=1700
             # forward(self.miPwm, vel_suave_min)
-            # enviar1.send('forwardLong')
+            # if not self.lastOrderCruzar:
+            print('entro', self.estoyPerdido, (time.time()-self.tiempoCruzandoACiegasInicial), self.lastOrderCruzar)
+            if not self.lastOrderCruzar:
+                enviar1.send('forwardACiegas')
+                self.tiempoCruzandoACiegasInicial = time.time()
+            elif ((time.time()-self.tiempoCruzandoACiegasInicial > 3.5) and self.estoyPerdido):
+                print('entro2')
+                enviar1.send('forwardACiegas')
+                self.tiempoCruzandoACiegasInicial = time.time()
             self.lastOrderCruzar = True
             # controladorPwm.actualizarOrden('stop')
             # stop(self.miPwm)
@@ -847,13 +869,14 @@ def procesoPrincipal(enviar1):
 
                         # self._buscarDeposito(frameCompleto)
 
-                        # print("FPS 6: ", (1/(time.time()-tiempoInicialFPS)))
+                        print("FPS 6: ", (1/(time.time()-tiempoInicialFPS)))
 
                         # Mostrar grilla
                         # self._dibujarGrilla()
                         # Display the resulting frame
                         # cv2.imshow('frameCompleto', frameCompleto)
                         cv2.imshow('filtroVerde', self.mask_green)
+                        out2.write(self.mask_green)
 
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
@@ -871,6 +894,7 @@ def procesoPrincipal(enviar1):
             # When everything done, release the video capture object
             self.cap.release()
             out.release()
+            out2.release()
             # Closes all the frames
             cv2.destroyAllWindows()
             exit()
@@ -898,6 +922,7 @@ def procesoAuxiliar2(recibir2):
 
 if __name__ == "__main__":
     out = cv2.VideoWriter('outputGirandoPistaUnoOpt2.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
+    out2 = cv2.VideoWriter('outputGirandoPistaUnoOpt3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,160))
 
     enviar1, recibir1 = Pipe()
     # enviar2, recibir2 = Pipe()
