@@ -9,9 +9,8 @@ def procesoAuxiliar(recibir1):
 
 	class controladorPWM:
 		def __init__(self):
-			# Initialise the PCA9685 using the default address (0x40).
-			self.servo_min = 0  #0  Min pulse length out of 4096
-			self.servo_max = 4095  # Max pulse length out of 4096
+			self.servo_min = 0
+			self.servo_max = 4095
 			self.servo_fw = 0
 			self.servo_bw = 0
 			self.servo_suave_min = 0
@@ -19,67 +18,38 @@ def procesoAuxiliar(recibir1):
 			self.servo_brusco_min = 0
 			self.servo_brusco_max = 0
 			self.pwm = self._iniciarPWM()
-			self.tiempoTranscurrido = 0
-			self.vehiculoParado = True
-			self.tiempoDeAccion = 0
 
 		def _iniciarPWM(self):
+			# Initialise the PCA9685 using the default address (0x40).
 			pwm = Adafruit_PCA9685.PCA9685()
 			pwm.set_pwm_freq(60)
 			return pwm
 		
-		def setear_parametros(self, servo_fw, servo_bw, servo_suave_min, servo_suave_max, servo_brusco_min, servo_brusco_max, tiempo):
+		def setear_parametros(self, servo_fw, servo_bw, servo_suave_min, servo_suave_max, servo_brusco_min, servo_brusco_max):
 			self.servo_fw = servo_fw
 			self.servo_bw = servo_bw
 			self.servo_suave_min = servo_suave_min
 			self.servo_suave_max = servo_suave_max
 			self.servo_brusco_min = servo_brusco_min
 			self.servo_brusco_max = servo_brusco_max
-			self.tiempoDeAccion = tiempo
 			return self
 
 		def start_loop(self):
-			# return True
 			while True:
-				# time.sleep(0.1)
-				# if recibir1.poll():
 				orden = recibir1.recv()
-				# print(orden)
-
-				# if self.cruzandoBocacalle:
-				# 	if 'P_' in orden:
-				# 		if orden == 'P_forward':
-				# 			self._forward()
 
 				if orden == 'exit':
 					sys.exit()
 				elif orden == 'stopAndIgnore':
 					self._stop()
 					time.sleep(5)
-					# while recibir1.poll():
-					# 	if recibir1.recv() == 'exit':
-					# 		self._stop()
-					# 		sys.exit()
-				# elif orden == 'cruzandoBocacallle':
-				# 	self.cruzandoBocacalle = True
 				elif orden == 'forwardACiegas':
 					self._forward()
 					time.sleep(3)
 					self._stop()
-					# while True:
-					# while recibir1.poll():
-					# 	if recibir1.recv() == 'exit':
-					# 		self._stop()
-					# 		sys.exit()
-
 					print('listo para volver a avanzar')
 				elif orden == 'stop':
 					self._stop()
-					# time.sleep(0.3)
-					# while recibir1.poll():
-					# 	if recibir1.recv() == 'exit':
-					# 		self._stop()
-					# 		sys.exit()
 				elif orden == 'forward':
 					self._forward()
 					time.sleep(0.2)
@@ -166,5 +136,5 @@ def procesoAuxiliar(recibir1):
 	controladorPwm = controladorPWM()
 	controladorPwm.setear_parametros(servo_fw=950, servo_bw=1200, 
                          servo_suave_min=2100, servo_suave_max=400, 
-                         servo_brusco_min=800, servo_brusco_max=2400, tiempo=0.02)
+                         servo_brusco_min=800, servo_brusco_max=2400)
 	controladorPwm.start_loop()
