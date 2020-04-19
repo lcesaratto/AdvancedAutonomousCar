@@ -400,17 +400,6 @@ def procesoPrincipal(enviar1):
             contandoFramesBackward = 0
 
             while ((time.time()-self.tiempoParaCruzarInicial) < 2):
-                # try:
-                #     x_prom_up= statistics.median(self.XtrianguloSuperior)
-                # except:
-                #     print("///////////////////////////NO FUNCA ARRIBA")
-                #     x_prom_up=0
-                # try:
-                #     x_prom_down= statistics.median(self.XtrianguloInferior)
-                # except:
-                #     print("///////////////////////////NO FUNCA ABAJO")
-                #     x_prom_down=0
-                # ultima_ubicacion_punto_verde = (x_prom_down + x_prom_up )/2
                 try:
                     indices = np.argpartition(self.YtrianguloSuperior, 300)
                     punto_a_seguir = statistics.median(self.XtrianguloSuperior[indices[:300]])
