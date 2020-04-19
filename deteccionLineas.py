@@ -307,7 +307,7 @@ def procesoPrincipal(enviar1):
                 # print('NORMAL SIN BOCACALLE')
             else:
                 # print('verificando condicion')
-                if (time.time() - self.tiempoParaCruzarInicial) <3.5:
+                if (time.time() - self.tiempoParaCruzarInicial) <2.5:
                     print('cruzando a ciegas')
                     return
                 distancia_al_centro_inferior = (self.width/2) - self.ubicacion_punto_verde
@@ -387,7 +387,7 @@ def procesoPrincipal(enviar1):
             if not self.estuveCruzandoBocacalle:
                 Thread(target=self._hiloParaCruzarBocacalle, args=()).start()
                 self.tiempoParaCruzarInicial = time.time()
-            elif (time.time()-self.tiempoParaCruzarInicial > 3.5):
+            elif (time.time()-self.tiempoParaCruzarInicial > 2.5):
                 Thread(target=self._hiloParaCruzarBocacalle, args=()).start()
                 self.tiempoParaCruzarInicial = time.time()
             self.siguiendoLineaSuperior = True
@@ -395,11 +395,11 @@ def procesoPrincipal(enviar1):
 
         def _hiloParaCruzarBocacalle(self):
             #Obtiene ubicacion del punto
-            print('lanzando hilo')
+            print('lanzando hilo', (time.time()-self.tiempoParaCruzarInicial))
             contandoFramesParado = 0
             contandoFramesBackward = 0
 
-            while ((time.time()-self.tiempoParaCruzarInicial) < 3):
+            while ((time.time()-self.tiempoParaCruzarInicial) < 2):
                 # try:
                 #     x_prom_up= statistics.median(self.XtrianguloSuperior)
                 # except:
@@ -421,7 +421,7 @@ def procesoPrincipal(enviar1):
                         punto_a_seguir = 0
                 
                 distancia_al_centro =  (self.width/2) -  punto_a_seguir
-                print('entro', distancia_al_centro, (time.time()-self.tiempoParaCruzarInicial))
+                # print('entro', distancia_al_centro, (time.time()-self.tiempoParaCruzarInicial))
                 #Se mueve siguiendo ese punto
                 if abs(distancia_al_centro) == 320:
                     # print('verificando2')
