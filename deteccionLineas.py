@@ -307,7 +307,7 @@ def procesoPrincipal(enviar1):
                 # print('NORMAL SIN BOCACALLE')
             else:
                 # print('verificando condicion')
-                if (time.time() - self.tiempoParaCruzarInicial) <1.5:
+                if (time.time() - self.tiempoParaCruzarInicial) <3.5:
                     print('cruzando a ciegas')
                     return
                 distancia_al_centro_inferior = (self.width/2) - self.ubicacion_punto_verde
@@ -387,7 +387,7 @@ def procesoPrincipal(enviar1):
             if not self.estuveCruzandoBocacalle:
                 Thread(target=self._hiloParaCruzarBocacalle, args=()).start()
                 self.tiempoParaCruzarInicial = time.time()
-            elif (time.time()-self.tiempoParaCruzarInicial > 1.5):
+            elif (time.time()-self.tiempoParaCruzarInicial > 3.5):
                 Thread(target=self._hiloParaCruzarBocacalle, args=()).start()
                 self.tiempoParaCruzarInicial = time.time()
             self.siguiendoLineaSuperior = True
@@ -395,7 +395,11 @@ def procesoPrincipal(enviar1):
 
         def _hiloParaCruzarBocacalle(self):
             #Obtiene ubicacion del punto
-            while (time.time()-self.tiempoParaCruzarInicial < 1):
+            print('lanzando hilo')
+            contandoFramesParado = 0
+            contandoFramesBackward = 0
+
+            while ((time.time()-self.tiempoParaCruzarInicial) < 3):
                 # try:
                 #     x_prom_up= statistics.median(self.XtrianguloSuperior)
                 # except:
@@ -407,25 +411,43 @@ def procesoPrincipal(enviar1):
                 #     print("///////////////////////////NO FUNCA ABAJO")
                 #     x_prom_down=0
                 # ultima_ubicacion_punto_verde = (x_prom_down + x_prom_up )/2
-
-                indices = np.argpartition(self.YtrianguloSuperior, 300)
-                punto_a_seguir = statistics.median(self.XtrianguloSuperior[indices[:300]])
+                try:
+                    indices = np.argpartition(self.YtrianguloSuperior, 300)
+                    punto_a_seguir = statistics.median(self.XtrianguloSuperior[indices[:300]])
+                except:
+                    try:
+                        punto_a_seguir = statistics.median(self.XtrianguloSuperior)
+                    except:
+                        punto_a_seguir = 0
                 
                 distancia_al_centro =  (self.width/2) -  punto_a_seguir
-                # print('entro', self.estuveCruzandoBocacalle, x_prom_up, x_prom_down, distancia_al_centro)
+                print('entro', distancia_al_centro, (time.time()-self.tiempoParaCruzarInicial))
                 #Se mueve siguiendo ese punto
-                limite1 = 40
-                limite2 = 170
-                if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
-                    enviar1.send('giroSuaIzq')
-                elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
-                    enviar1.send('giroSuaDer')
-                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
-                    enviar1.send('giroBruDer')
-                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
-                    enviar1.send('giroBruIzq')
+                if abs(distancia_al_centro) == 320:
+                    # print('verificando2')
+                    if contandoFramesParado != 3:
+                        enviar1.send('stop')
+                        contandoFramesParado += 1
+                        contandoFramesBackward = 0
+                    else:
+                        enviar1.send('backward')
+                        contandoFramesBackward += 1
+                        if contandoFramesBackward == 2:
+                            contandoFramesParado = 0
                 else:
-                    enviar1.send('forward')
+                    limite1 = 40
+                    limite2 = 170
+                    if limite2 > distancia_al_centro > limite1:
+                        enviar1.send('giroSuaIzq')
+                    elif -limite1 > distancia_al_centro > -limite2:
+                        enviar1.send('giroSuaDer')
+                    elif distancia_al_centro >= limite2:
+                        enviar1.send('giroBruIzq')
+                    elif -limite2 >= distancia_al_centro:
+                        enviar1.send('giroBruDer')
+                    else:
+                        enviar1.send('forward')
+            print('fin hilo')
 
         def _buscarDeposito(self):
             self._buscar_qr(self.frameCompleto)
