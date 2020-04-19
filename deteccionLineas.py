@@ -332,15 +332,16 @@ def procesoPrincipal(enviar1):
                     ubicacion_punto_verde_superior = x_mid_int
                     distancia_al_centro = (self.width/2) - ubicacion_punto_verde_superior
 
-            print('verificando1')
+            # print('verificando1')
+            print('distancia al centro: ', distancia_al_centro)
             if abs(distancia_al_centro) == 320:
-                print('verificando2')
+                # print('verificando2')
                 if self.contandoFramesParado != 3:
                     enviar1.send('stop')
                     self.contandoFramesParado += 1
                     self.contandoFramesBackward = 0
                 else:
-                    print('/////////////////////////////////////////////////////////     ', self.ultima_distancia)
+                    # print('/////////////////////////////////////////////////////////     ', self.ultima_distancia)
                     if self.ultima_distancia <= -250:
                         enviar1.send('giroBruDer')
                     elif self.ultima_distancia >= 250:
@@ -352,7 +353,7 @@ def procesoPrincipal(enviar1):
                         self.contandoFramesParado = 0
             
             else:
-                print('verificando3', distancia_al_centro)
+                # print('verificando3', distancia_al_centro)
                 limite1 = 40
                 limite2 = 170
                 distancia_al_centro -= 11
@@ -384,7 +385,7 @@ def procesoPrincipal(enviar1):
                 self.tiempoCruzandoACiegasInicial = time.time()
                 self.siguiendoLineaSuperior = True
             elif (time.time()-self.tiempoCruzandoACiegasInicial > 1):
-                print('entro2')
+                # print('entro2')
                 enviar1.send('forwardACiegas')
                 self.tiempoCruzandoACiegasInicial = time.time()
                 self.siguiendoLineaSuperior = True
@@ -416,13 +417,15 @@ def procesoPrincipal(enviar1):
                 m_down = 0
                 b_up = 0
                 b_down = 0
+                puntos_arriba = 1700
+                puntos_abajo = 2000
                 if i==0:
                     # Chequeo diagonal amarilla
                     upper_left_triangle = np.flipud(np.tril(np.flipud(mask_green), 0)) # Upper triangle of an array
                     lower_right_triangle = np.fliplr(np.tril(np.fliplr(mask_green), -1)) # Lower triangle of an array
                     y_up_left, x_up_left = np.where(upper_left_triangle == 1)
                     y_down_right, x_down_right = np.where(lower_right_triangle == 1)
-                    if len(x_up_left) > 200 and len(x_down_right) > 1000:
+                    if len(x_up_left) > puntos_arriba and len(x_down_right) > puntos_abajo:
                         # diagonal_right = np.eye(480,640,0,bool)
                         suficientesPuntos = True
                     else:
@@ -454,7 +457,7 @@ def procesoPrincipal(enviar1):
                     upper_right_triangle = np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(mask_green)), 0))) # Upper triangle of an array
                     y_up_right, x_up_right = np.where(upper_right_triangle == 1)
                     y_down_left, x_down_left = np.where(lower_left_triangle == 1)
-                    if len(x_up_right) > 200 and len(x_down_left) > 1000:
+                    if len(x_up_right) > puntos_arriba and len(x_down_left) > puntos_abajo:
                         suficientesPuntos = True
                     else:
                         self.bocacalleDetectada = False
@@ -584,7 +587,7 @@ def procesoPrincipal(enviar1):
 
                         # self._buscarDeposito(frameCompleto)
 
-                        print("FPS 6: ", (1/(time.time()-tiempoInicialFPS)))
+                        # print("FPS 6: ", (1/(time.time()-tiempoInicialFPS)))
 
                         # Mostrar grilla
                         # self._dibujarGrilla()

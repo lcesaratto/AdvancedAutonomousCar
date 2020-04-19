@@ -18,6 +18,8 @@ def procesoAuxiliar(recibir1):
 			self.servo_brusco_min = 0
 			self.servo_brusco_max = 0
 			self.pwm = self._iniciarPWM()
+			self.ordenDada = 'none'
+			self.seDioOrdenConPrioridad = False
 
 		def _iniciarPWM(self):
 			# Initialise the PCA9685 using the default address (0x40).
@@ -36,7 +38,11 @@ def procesoAuxiliar(recibir1):
 
 		def start_loop(self):
 			while True:
-				orden = recibir1.recv()
+				if self.seDioOrdenConPrioridad:
+					orden = self.ordenDada
+					self.seDioOrdenConPrioridad = False
+				else:
+					orden = recibir1.recv()
 
 				if orden == 'exit':
 					sys.exit()
@@ -44,6 +50,7 @@ def procesoAuxiliar(recibir1):
 					self._stop()
 					time.sleep(5)
 				elif orden == 'forwardACiegas':
+					print('MOVIENDOME A CIEGAS')
 					self._forward()
 					time.sleep(0.5)
 					self._stop()
@@ -56,7 +63,7 @@ def procesoAuxiliar(recibir1):
 					self._stop()
 				elif orden == 'backward':
 					self._backward()
-					time.sleep(0.3)
+					time.sleep(0.2)
 					self._stop()
 				elif orden == 'giroBruDer':
 					self._giroDerechaBrusco()
@@ -75,9 +82,10 @@ def procesoAuxiliar(recibir1):
 					time.sleep(0.2)
 					self._stop()
 				while recibir1.poll():
-						if recibir1.recv() == 'exit':
-							self._stop()
-							sys.exit()
+					ordenDada = recibir1.recv()
+					if (ordenDada == 'exit') or (ordenDada == 'stopAndIgnore') or (ordenDada == 'forwardACiegas'):
+						self.seDioOrdenConPrioridad = True
+						self.ordenDada = ordenDada
 
 		def _forward(self):
 			self.pwm.set_pwm(2, 0, self.servo_min) #Atras Derecha
@@ -134,7 +142,7 @@ def procesoAuxiliar(recibir1):
 			self.pwm.set_pwm(5, 0, 0) #Delante Izquierda
 
 	controladorPwm = controladorPWM()
-	controladorPwm.setear_parametros(servo_fw=1100, servo_bw=1200, 
+	controladorPwm.setear_parametros(servo_fw=1100, servo_bw=1100, 
                          servo_suave_min=2100, servo_suave_max=400, 
                          servo_brusco_min=800, servo_brusco_max=2400)
 	controladorPwm.start_loop()

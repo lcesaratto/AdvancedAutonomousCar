@@ -2,10 +2,10 @@ import cv2
 import numpy as np
 from copy import deepcopy
 
-cap = cv2.VideoCapture('outputMan2.avi')
+cap = cv2.VideoCapture(0)
 width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
 
-out = cv2.VideoWriter('VideoDeMuestra.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 20, (640,480))
+# out = cv2.VideoWriter('VideoDeMuestra.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 20, (640,480))
 
 
 while cap.isOpened():
@@ -32,7 +32,7 @@ while cap.isOpened():
         suficientesPuntos = False
         diagonalNoCruza = False
 
-        if len(x_up) > 200 and len(x_down) > 1000:
+        if len(x_up) > 1800 and len(x_down) > 2000:
             diagonal_right = np.eye(480,640,0,bool)
             suficientesPuntos = True
             # cv2.imshow('upper_left', upper_left_triangle + diagonal_right)
@@ -75,12 +75,12 @@ while cap.isOpened():
         if suficientesPuntos and diagonalNoCruza:
             cv2.line(frameDiagonal,(0,int(b_up)),(int(-b_up/m_up),0),(255,255,255), 2)
             cv2.line(frameDiagonal,(int((480-b_down)/m_down),480),(640,int(640*m_down+b_down)),(255,255,255), 2)
-            frameDiagonal[:,:,2] = frameDiagonal[:,:,2] + 30
+            frame[:,:,2] = frame[:,:,2] + 30
 
-        cv2.imshow('lower_right', lower_right_triangle)
+        # cv2.imshow('lower_right', lower_right_triangle)
         cv2.imshow('imagen original', frame)
-        out.write(frameDiagonal)
-        cv2.imshow('eleccion de diagonal', frameDiagonal)
+        # out.write(frameDiagonal)
+        # cv2.imshow('eleccion de diagonal', frameDiagonal)
         key = cv2.waitKey(10)
         if key == ord('q') or key == ord('Q'):
             break
