@@ -75,11 +75,13 @@ def procesoPrincipal(enviar1):
 
             self.estuveCruzandoBocacalle = False
             self.contandoFramesCruzando = 0
-            self.tiempoCruzandoACiegasInicial = 0
+            self.tiempoParaCruzarInicial = 0
             self.siguiendoLineaSuperior = False
             #Triangulos
             self.XtrianguloSuperior = []
-            self.XtrianguloInferior = []
+            self.YtrianguloSuperior = []
+            # self.XtrianguloInferior = []
+            self.ultimaDiagonalAmarilla = True
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -305,9 +307,9 @@ def procesoPrincipal(enviar1):
                 # print('NORMAL SIN BOCACALLE')
             else:
                 # print('verificando condicion')
-                # if (time.time() - self.tiempoCruzandoACiegasInicial) <1:
-                #     # print('cruzando a ciegas')
-                #     return
+                if (time.time() - self.tiempoParaCruzarInicial) <1.5:
+                    print('cruzando a ciegas')
+                    return
                 distancia_al_centro_inferior = (self.width/2) - self.ubicacion_punto_verde
                 if abs(distancia_al_centro_inferior) < 100:
                     self.contandoFramesCruzando += 1
@@ -336,7 +338,7 @@ def procesoPrincipal(enviar1):
                     distancia_al_centro = (self.width/2) - ubicacion_punto_verde_superior
 
             # print('verificando1')
-            print('distancia al centro: ', distancia_al_centro)
+            # print('distancia al centro: ', distancia_al_centro)
             if abs(distancia_al_centro) == 320:
                 # print('verificando2')
                 if self.contandoFramesParado != 3:
@@ -382,37 +384,48 @@ def procesoPrincipal(enviar1):
             self.estuveCruzandoBocacalle = False
 
         def _moverVehiculoCruzarBocacalle(self):
-            #print('entro', (time.time()-self.tiempoCruzandoACiegasInicial), self.estuveCruzandoBocacalle, self.siguiendoLineaSuperior)           
-            #Obtiene ubicacion del punto
-            try:
-                x_prom_up= statistics.median(self.XtrianguloSuperior)
-            except:
-                print("///////////////////////////NO FUNCA ARRIBA")
-                x_prom_up=0
-            try:
-                x_prom_down= statistics.median(self.XtrianguloInferior)
-            except:
-                print("///////////////////////////NO FUNCA ABAJO")
-                x_prom_down=0
-            ultima_ubicacion_punto_verde = (x_prom_down + x_prom_up )/2
-            distancia_al_centro =  (self.width/2) -  ultima_ubicacion_punto_verde
-            #Se mueve siguiendo ese punto
-            limite1 = 40
-            limite2 = 170
-            if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
-                enviar1.send('giroSuaIzq')
-            elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
-                enviar1.send('giroSuaDer')
-            elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
-                enviar1.send('giroBruDer')
-            elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
-                enviar1.send('giroBruIzq')
-            else:
-                enviar1.send('forward')
-
-               
+            if not self.estuveCruzandoBocacalle:
+                Thread(target=self._hiloParaCruzarBocacalle, args=()).start()
+                self.tiempoParaCruzarInicial = time.time()
+            elif (time.time()-self.tiempoParaCruzarInicial > 1.5):
+                Thread(target=self._hiloParaCruzarBocacalle, args=()).start()
+                self.tiempoParaCruzarInicial = time.time()
             self.siguiendoLineaSuperior = True
             self.estuveCruzandoBocacalle = True
+
+        def _hiloParaCruzarBocacalle(self):
+            #Obtiene ubicacion del punto
+            while (time.time()-self.tiempoParaCruzarInicial < 1):
+                # try:
+                #     x_prom_up= statistics.median(self.XtrianguloSuperior)
+                # except:
+                #     print("///////////////////////////NO FUNCA ARRIBA")
+                #     x_prom_up=0
+                # try:
+                #     x_prom_down= statistics.median(self.XtrianguloInferior)
+                # except:
+                #     print("///////////////////////////NO FUNCA ABAJO")
+                #     x_prom_down=0
+                # ultima_ubicacion_punto_verde = (x_prom_down + x_prom_up )/2
+
+                indices = np.argpartition(self.YtrianguloSuperior, 300)
+                punto_a_seguir = statistics.median(self.XtrianguloSuperior[indices[:300]])
+                
+                distancia_al_centro =  (self.width/2) -  punto_a_seguir
+                # print('entro', self.estuveCruzandoBocacalle, x_prom_up, x_prom_down, distancia_al_centro)
+                #Se mueve siguiendo ese punto
+                limite1 = 40
+                limite2 = 170
+                if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
+                    enviar1.send('giroSuaIzq')
+                elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
+                    enviar1.send('giroSuaDer')
+                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
+                    enviar1.send('giroBruDer')
+                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
+                    enviar1.send('giroBruIzq')
+                else:
+                    enviar1.send('forward')
 
         def _buscarDeposito(self):
             self._buscar_qr(self.frameCompleto)
@@ -448,6 +461,9 @@ def procesoPrincipal(enviar1):
                     lower_right_triangle = np.fliplr(np.tril(np.fliplr(mask_green), -1)) # Lower triangle of an array
                     y_up_left, x_up_left = np.where(upper_left_triangle == 1)
                     y_down_right, x_down_right = np.where(lower_right_triangle == 1)
+                    if self.ultimaDiagonalAmarilla:
+                        self.XtrianguloSuperior = x_up_left
+                        self.YtrianguloSuperior = y_up_left
                     if len(x_up_left) > puntos_arriba and len(x_down_right) > puntos_abajo:
                         # diagonal_right = np.eye(480,640,0,bool)
                         suficientesPuntos = True
@@ -471,8 +487,9 @@ def procesoPrincipal(enviar1):
                     except:
                         continue
                     if suficientesPuntos and diagonalNoCruza: 
-                        self.XtrianguloSuperior = x_up_left    
-                        self.XtrianguloInferior = x_down_right       
+                        # self.XtrianguloSuperior = x_up_left    
+                        # self.XtrianguloInferior = x_down_right       
+                        self.ultimaDiagonalAmarilla = True
                         self.bocacalleDetectada = True
                         break
 
@@ -482,6 +499,9 @@ def procesoPrincipal(enviar1):
                     upper_right_triangle = np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(mask_green)), 0))) # Upper triangle of an array
                     y_up_right, x_up_right = np.where(upper_right_triangle == 1)
                     y_down_left, x_down_left = np.where(lower_left_triangle == 1)
+                    if not self.ultimaDiagonalAmarilla:
+                        self.XtrianguloSuperior = x_up_right
+                        self.YtrianguloSuperior = y_up_right
                     if len(x_up_right) > puntos_arriba and len(x_down_left) > puntos_abajo:
                         suficientesPuntos = True
                     else:
@@ -504,8 +524,9 @@ def procesoPrincipal(enviar1):
                         diagonalNoCruza = False
 
                     if suficientesPuntos and diagonalNoCruza:  
-                        self.XtrianguloSuperior = x_up_right    
-                        self.XtrianguloInferior = x_down_left         
+                        # self.XtrianguloSuperior = x_up_right
+                        # self.XtrianguloInferior = x_down_left
+                        self.ultimaDiagonalAmarilla = False         
                         self.bocacalleDetectada = True
                     else:
                         self.bocacalleDetectada = False
