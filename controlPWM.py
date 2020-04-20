@@ -81,7 +81,7 @@ def procesoAuxiliar(recibir1):
 					self._giroIzquierdaSuave()
 					time.sleep(0.1)
 					self._stop()
-				time.sleep(0.025)
+				time.sleep(0.04)
 				while recibir1.poll():
 					ordenDada = recibir1.recv()
 					if (ordenDada == 'exit') or (ordenDada == 'stopAndIgnore') or (ordenDada == 'forwardACiegas'):

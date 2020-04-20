@@ -136,17 +136,19 @@ def procesoPrincipal(enviar1):
             barcodes = pyzbar.decode(frame)
             if barcodes:
                 qr_encontrado = barcodes[0].data.decode("utf-8")
-                if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar and not self.listoParaReiniciar:
-                    print('Dejando paquete!!')
-                    self.depositoHallado = -1
-                    enviar1.send('stopAndIgnore')
-                    self.listoParaReiniciar = True
-                if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
-                    print("inicio hallado")
-                    enviar1.send('stopAndIgnore')
-                    self.listoParaReiniciar = False
-                    self.tiempoDeEsperaInicial = -1
-                    self.depositoABuscar = -1
+                if len(qr_encontrado) == 2:
+                    if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar and not self.listoParaReiniciar:
+                        print('Dejando paquete!!')
+                        self.depositoHallado = -1
+                        enviar1.send('stopAndIgnore')
+                        self.listoParaReiniciar = True
+                elif len(qr_encontrado) == 1:
+                    if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
+                        print("inicio hallado")
+                        enviar1.send('stopAndIgnore')
+                        self.listoParaReiniciar = False
+                        self.tiempoDeEsperaInicial = -1
+                        self.depositoABuscar = -1
 
         def _detectarRojo(self,frame):
             #Defino parametros HSV para detectar color rojo 
@@ -308,12 +310,13 @@ def procesoPrincipal(enviar1):
             else:
                 # print('verificando condicion')
                 if (time.time() - self.tiempoParaCruzarInicial) <2.5:
-                    print('cruzando a ciegas')
+                    # print('cruzando a ciegas')
                     return
                 distancia_al_centro_inferior = (self.width/2) - self.ubicacion_punto_verde
                 if abs(distancia_al_centro_inferior) < 100:
                     self.contandoFramesCruzando += 1
-                if self.contandoFramesCruzando >= 15:
+                    print('frames cruzando:', self.contandoFramesCruzando)
+                if self.contandoFramesCruzando >= 5:
                     self.siguiendoLineaSuperior = False
                     print('//////////////////////////////////////// LIMPIANDO FLAG')
                     distancia_al_centro = distancia_al_centro_inferior
@@ -395,22 +398,40 @@ def procesoPrincipal(enviar1):
 
         def _hiloParaCruzarBocacalle(self):
             #Obtiene ubicacion del punto
-            print('lanzando hilo', (time.time()-self.tiempoParaCruzarInicial))
+            tiempoParaCruzarInicial = time.time()
+            print('lanzando hilo')
             contandoFramesParado = 0
             contandoFramesBackward = 0
 
-            while ((time.time()-self.tiempoParaCruzarInicial) < 2):
+            while ((time.time()-tiempoParaCruzarInicial) < 2):
+
+                frame = copy.deepcopy(self.frameCompleto[0:240,0:int(self.width)])
+                lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
+                upper_green = np.array([80, 230, 140])
+                frame = cv2.GaussianBlur(frame, (3, 3), 0)
+                hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
+                y, x = np.where(mask_green == 255)
+                cantidad_puntos = round(len(x)*0.2)
                 try:
-                    indices = np.argpartition(self.YtrianguloSuperior, 300)
-                    punto_a_seguir = statistics.median(self.XtrianguloSuperior[indices[:300]])
+                    indices = np.argpartition(y, cantidad_puntos)
+                    punto_a_seguir = statistics.median(x[indices[:cantidad_puntos]])
                 except:
-                    try:
-                        punto_a_seguir = statistics.median(self.XtrianguloSuperior)
-                    except:
-                        punto_a_seguir = 0
+                    punto_a_seguir = 0
+
+                distancia_al_centro = (self.width/2) - punto_a_seguir
+                # print(distancia_al_centro)
+
+                # try:
+                #     indices = np.argpartition(self.YtrianguloSuperior, 300)
+                #     punto_a_seguir = statistics.median(self.XtrianguloSuperior[indices[:300]])
+                # except:
+                #     try:
+                #         punto_a_seguir = statistics.median(self.XtrianguloSuperior)
+                #     except:
+                #         punto_a_seguir = 0
                 
-                distancia_al_centro =  (self.width/2) -  punto_a_seguir
-                # print('entro', distancia_al_centro, (time.time()-self.tiempoParaCruzarInicial))
+                # distancia_al_centro =  (self.width/2) -  punto_a_seguir
                 #Se mueve siguiendo ese punto
                 if abs(distancia_al_centro) == 320:
                     # print('verificando2')
@@ -464,7 +485,7 @@ def procesoPrincipal(enviar1):
                 m_down = 0
                 b_up = 0
                 b_down = 0
-                puntos_arriba = 1700
+                puntos_arriba = 1500
                 puntos_abajo = 2000
                 if i==0:
                     # Chequeo diagonal amarilla
