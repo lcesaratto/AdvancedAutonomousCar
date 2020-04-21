@@ -49,12 +49,12 @@ def procesoAuxiliar(recibir1):
 				elif orden == 'stopAndIgnore':
 					self._stop()
 					time.sleep(5)
-				elif orden == 'forwardACiegas':
-					print('MOVIENDOME A CIEGAS')
-					self._forward()
-					time.sleep(0.5)
-					self._stop()
-					print('listo para volver a avanzar')
+				# elif orden == 'forwardACiegas':
+				# 	print('MOVIENDOME A CIEGAS')
+				# 	self._forward()
+				# 	time.sleep(0.5)
+				# 	self._stop()
+				# 	print('listo para volver a avanzar')
 				elif orden == 'stop':
 					self._stop()
 				elif orden == 'forward':
@@ -67,20 +67,21 @@ def procesoAuxiliar(recibir1):
 					self._stop()
 				elif orden == 'giroBruDer':
 					self._giroDerechaBrusco()
-					time.sleep(0.2)
+					time.sleep(0.1)
 					self._stop()
 				elif orden == 'giroBruIzq':
 					self._giroIzquierdaBrusco()
-					time.sleep(0.2)
+					time.sleep(0.1)
 					self._stop()
 				elif orden == 'giroSuaDer':
 					self._giroDerechaSuave()
-					time.sleep(0.2)
+					time.sleep(0.1)
 					self._stop()
 				elif orden == 'giroSuaIzq':
 					self._giroIzquierdaSuave()
-					time.sleep(0.2)
+					time.sleep(0.1)
 					self._stop()
+				time.sleep(0.04)
 				while recibir1.poll():
 					ordenDada = recibir1.recv()
 					if (ordenDada == 'exit') or (ordenDada == 'stopAndIgnore') or (ordenDada == 'forwardACiegas'):
@@ -143,6 +144,6 @@ def procesoAuxiliar(recibir1):
 
 	controladorPwm = controladorPWM()
 	controladorPwm.setear_parametros(servo_fw=1100, servo_bw=1100, 
-                         servo_suave_min=2100, servo_suave_max=400, 
-                         servo_brusco_min=800, servo_brusco_max=2400)
+                         servo_suave_min=2300, servo_suave_max=600, 
+                         servo_brusco_min=1000, servo_brusco_max=2600)
 	controladorPwm.start_loop()

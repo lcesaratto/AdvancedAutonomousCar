@@ -75,11 +75,13 @@ def procesoPrincipal(enviar1):
 
             self.estuveCruzandoBocacalle = False
             self.contandoFramesCruzando = 0
-            self.tiempoCruzandoACiegasInicial = 0
+            self.tiempoParaCruzarInicial = 0
             self.siguiendoLineaSuperior = False
             #Triangulos
             self.XtrianguloSuperior = []
-            self.XtrianguloInferior = []
+            self.YtrianguloSuperior = []
+            # self.XtrianguloInferior = []
+            self.ultimaDiagonalAmarilla = True
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -134,17 +136,19 @@ def procesoPrincipal(enviar1):
             barcodes = pyzbar.decode(frame)
             if barcodes:
                 qr_encontrado = barcodes[0].data.decode("utf-8")
-                if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar and not self.listoParaReiniciar:
-                    print('Dejando paquete!!')
-                    self.depositoHallado = -1
-                    enviar1.send('stopAndIgnore')
-                    self.listoParaReiniciar = True
-                if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
-                    print("inicio hallado")
-                    enviar1.send('stopAndIgnore')
-                    self.listoParaReiniciar = False
-                    self.tiempoDeEsperaInicial = -1
-                    self.depositoABuscar = -1
+                if len(qr_encontrado) == 2:
+                    if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar and not self.listoParaReiniciar:
+                        print('Dejando paquete!!')
+                        self.depositoHallado = -1
+                        enviar1.send('stopAndIgnore')
+                        self.listoParaReiniciar = True
+                elif len(qr_encontrado) == 1:
+                    if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
+                        print("inicio hallado")
+                        enviar1.send('stopAndIgnore')
+                        self.listoParaReiniciar = False
+                        self.tiempoDeEsperaInicial = -1
+                        self.depositoABuscar = -1
 
         def _detectarRojo(self,frame):
             #Defino parametros HSV para detectar color rojo 
@@ -305,13 +309,14 @@ def procesoPrincipal(enviar1):
                 # print('NORMAL SIN BOCACALLE')
             else:
                 # print('verificando condicion')
-                # if (time.time() - self.tiempoCruzandoACiegasInicial) <1:
-                #     # print('cruzando a ciegas')
-                #     return
+                if (time.time() - self.tiempoParaCruzarInicial) <2.5:
+                    # print('cruzando a ciegas')
+                    return
                 distancia_al_centro_inferior = (self.width/2) - self.ubicacion_punto_verde
                 if abs(distancia_al_centro_inferior) < 100:
                     self.contandoFramesCruzando += 1
-                if self.contandoFramesCruzando >= 15:
+                    print('frames cruzando:', self.contandoFramesCruzando)
+                if self.contandoFramesCruzando >= 5:
                     self.siguiendoLineaSuperior = False
                     print('//////////////////////////////////////// LIMPIANDO FLAG')
                     distancia_al_centro = distancia_al_centro_inferior
@@ -336,7 +341,7 @@ def procesoPrincipal(enviar1):
                     distancia_al_centro = (self.width/2) - ubicacion_punto_verde_superior
 
             # print('verificando1')
-            print('distancia al centro: ', distancia_al_centro)
+            # print('distancia al centro: ', distancia_al_centro)
             if abs(distancia_al_centro) == 320:
                 # print('verificando2')
                 if self.contandoFramesParado != 3:
@@ -382,37 +387,77 @@ def procesoPrincipal(enviar1):
             self.estuveCruzandoBocacalle = False
 
         def _moverVehiculoCruzarBocacalle(self):
-            #print('entro', (time.time()-self.tiempoCruzandoACiegasInicial), self.estuveCruzandoBocacalle, self.siguiendoLineaSuperior)           
-            #Obtiene ubicacion del punto
-            try:
-                x_prom_up= statistics.median(self.XtrianguloSuperior)
-            except:
-                print("///////////////////////////NO FUNCA ARRIBA")
-                x_prom_up=0
-            try:
-                x_prom_down= statistics.median(self.XtrianguloInferior)
-            except:
-                print("///////////////////////////NO FUNCA ABAJO")
-                x_prom_down=0
-            ultima_ubicacion_punto_verde = (x_prom_down + x_prom_up )/2
-            distancia_al_centro =  (self.width/2) -  ultima_ubicacion_punto_verde
-            #Se mueve siguiendo ese punto
-            limite1 = 40
-            limite2 = 170
-            if distancia_al_centro > limite1 and abs(distancia_al_centro) < limite2:
-                enviar1.send('giroSuaIzq')
-            elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
-                enviar1.send('giroSuaDer')
-            elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
-                enviar1.send('giroBruDer')
-            elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
-                enviar1.send('giroBruIzq')
-            else:
-                enviar1.send('forward')
-
-               
+            if not self.estuveCruzandoBocacalle:
+                Thread(target=self._hiloParaCruzarBocacalle, args=()).start()
+                self.tiempoParaCruzarInicial = time.time()
+            elif (time.time()-self.tiempoParaCruzarInicial > 2.5):
+                Thread(target=self._hiloParaCruzarBocacalle, args=()).start()
+                self.tiempoParaCruzarInicial = time.time()
             self.siguiendoLineaSuperior = True
             self.estuveCruzandoBocacalle = True
+
+        def _hiloParaCruzarBocacalle(self):
+            #Obtiene ubicacion del punto
+            tiempoParaCruzarInicial = time.time()
+            print('lanzando hilo')
+            contandoFramesParado = 0
+            contandoFramesBackward = 0
+
+            while ((time.time()-tiempoParaCruzarInicial) < 2):
+
+                frame = copy.deepcopy(self.frameCompleto[0:240,0:int(self.width)])
+                lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
+                upper_green = np.array([80, 230, 140])
+                frame = cv2.GaussianBlur(frame, (3, 3), 0)
+                hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
+                y, x = np.where(mask_green == 255)
+                cantidad_puntos = round(len(x)*0.2)
+                try:
+                    indices = np.argpartition(y, cantidad_puntos)
+                    punto_a_seguir = statistics.median(x[indices[:cantidad_puntos]])
+                except:
+                    punto_a_seguir = 0
+
+                distancia_al_centro = (self.width/2) - punto_a_seguir
+                # print(distancia_al_centro)
+
+                # try:
+                #     indices = np.argpartition(self.YtrianguloSuperior, 300)
+                #     punto_a_seguir = statistics.median(self.XtrianguloSuperior[indices[:300]])
+                # except:
+                #     try:
+                #         punto_a_seguir = statistics.median(self.XtrianguloSuperior)
+                #     except:
+                #         punto_a_seguir = 0
+                
+                # distancia_al_centro =  (self.width/2) -  punto_a_seguir
+                #Se mueve siguiendo ese punto
+                if abs(distancia_al_centro) == 320:
+                    # print('verificando2')
+                    if contandoFramesParado != 3:
+                        enviar1.send('stop')
+                        contandoFramesParado += 1
+                        contandoFramesBackward = 0
+                    else:
+                        enviar1.send('backward')
+                        contandoFramesBackward += 1
+                        if contandoFramesBackward == 2:
+                            contandoFramesParado = 0
+                else:
+                    limite1 = 40
+                    limite2 = 170
+                    if limite2 > distancia_al_centro > limite1:
+                        enviar1.send('giroSuaIzq')
+                    elif -limite1 > distancia_al_centro > -limite2:
+                        enviar1.send('giroSuaDer')
+                    elif distancia_al_centro >= limite2:
+                        enviar1.send('giroBruIzq')
+                    elif -limite2 >= distancia_al_centro:
+                        enviar1.send('giroBruDer')
+                    else:
+                        enviar1.send('forward')
+            print('fin hilo')
 
         def _buscarDeposito(self):
             self._buscar_qr(self.frameCompleto)
@@ -440,7 +485,7 @@ def procesoPrincipal(enviar1):
                 m_down = 0
                 b_up = 0
                 b_down = 0
-                puntos_arriba = 1700
+                puntos_arriba = 1500
                 puntos_abajo = 2000
                 if i==0:
                     # Chequeo diagonal amarilla
@@ -448,6 +493,9 @@ def procesoPrincipal(enviar1):
                     lower_right_triangle = np.fliplr(np.tril(np.fliplr(mask_green), -1)) # Lower triangle of an array
                     y_up_left, x_up_left = np.where(upper_left_triangle == 1)
                     y_down_right, x_down_right = np.where(lower_right_triangle == 1)
+                    if self.ultimaDiagonalAmarilla:
+                        self.XtrianguloSuperior = x_up_left
+                        self.YtrianguloSuperior = y_up_left
                     if len(x_up_left) > puntos_arriba and len(x_down_right) > puntos_abajo:
                         # diagonal_right = np.eye(480,640,0,bool)
                         suficientesPuntos = True
@@ -471,8 +519,9 @@ def procesoPrincipal(enviar1):
                     except:
                         continue
                     if suficientesPuntos and diagonalNoCruza: 
-                        self.XtrianguloSuperior = x_up_left    
-                        self.XtrianguloInferior = x_down_right       
+                        # self.XtrianguloSuperior = x_up_left    
+                        # self.XtrianguloInferior = x_down_right       
+                        self.ultimaDiagonalAmarilla = True
                         self.bocacalleDetectada = True
                         break
 
@@ -482,6 +531,9 @@ def procesoPrincipal(enviar1):
                     upper_right_triangle = np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(mask_green)), 0))) # Upper triangle of an array
                     y_up_right, x_up_right = np.where(upper_right_triangle == 1)
                     y_down_left, x_down_left = np.where(lower_left_triangle == 1)
+                    if not self.ultimaDiagonalAmarilla:
+                        self.XtrianguloSuperior = x_up_right
+                        self.YtrianguloSuperior = y_up_right
                     if len(x_up_right) > puntos_arriba and len(x_down_left) > puntos_abajo:
                         suficientesPuntos = True
                     else:
@@ -504,8 +556,9 @@ def procesoPrincipal(enviar1):
                         diagonalNoCruza = False
 
                     if suficientesPuntos and diagonalNoCruza:  
-                        self.XtrianguloSuperior = x_up_right    
-                        self.XtrianguloInferior = x_down_left         
+                        # self.XtrianguloSuperior = x_up_right
+                        # self.XtrianguloInferior = x_down_left
+                        self.ultimaDiagonalAmarilla = False         
                         self.bocacalleDetectada = True
                     else:
                         self.bocacalleDetectada = False
