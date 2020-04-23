@@ -8,11 +8,11 @@ import matplotlib.patches as mpatches
 
 import copy 
 def color_picker():
-            frame = cv2.imread('LineaVerde.png')
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            frame = cv2.imread('LineaRoja.png')
+            frameRojo = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             plt.imshow(frame)
             plt.show()
-            pixel_colors = frame.reshape((np.shape(frame)[0]*np.shape(frame)[1], 3))
+            pixel_colors = frameRojo.reshape((np.shape(frameRojo)[0]*np.shape(frameRojo)[1], 3))
             norm = colors.Normalize(vmin=-1.,vmax=1.)
             norm.autoscale(pixel_colors)
             pixel_colors = norm(pixel_colors).tolist()
@@ -55,17 +55,17 @@ def _detectarLineaVerde(frame):
 
 
 if __name__ == "__main__":
-    # color_picker()
-    cap = cv2.VideoCapture(0)
-    while cap.isOpened():
-            ret, frameCompleto = cap.read()
-            if ret:
-                _detectarLineaVerde(frameCompleto)
+    color_picker()
+    # cap = cv2.VideoCapture(0)
+    # while cap.isOpened():
+    #         ret, frameCompleto = cap.read()
+    #         if ret:
+    #             _detectarLineaVerde(frameCompleto)
 
-            key = cv2.waitKey(10)
-            if key == ord('q') or key == ord('Q'):
-                break
+    #         key = cv2.waitKey(10)
+    #         if key == ord('q') or key == ord('Q'):
+    #             break
 
-    cap.release()
-    # Closes all the frames
-    cv2.destroyAllWindows()
+    # cap.release()
+    # # Closes all the frames
+    # cv2.destroyAllWindows()
