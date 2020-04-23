@@ -11,10 +11,10 @@ while cap.isOpened():
     if ret:
         #Defino parametros HSV para detectar color rojo 
         frame = copy.deepcopy(frameOriginal)
-        lower_red = np.array([170, 179, 0])
-        upper_red = np.array([255, 255, 255])
+        lower_red = np.array([0, 10, 40])
+        upper_red = np.array([10, 100, 100])
         #Aplico filtro de color con los parametros ya definidos
-        hsv_red = cv2.cvtColor(frameOriginal, cv2.COLOR_BGR2HSV)
+        hsv_red = cv2.cvtColor(frameOriginal, cv2.COLOR_BGR2HLS)
         mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
         #Proceso
         # if np.mean(mask_red) > 15:

@@ -45,7 +45,7 @@ def procesoPrincipal(enviar1):
             self.right_points_up_2 = np.array([0, 0]) # Para la fila 5
             self.left_points_up_2 = np.array([0, 0])
             # Banderas de prueba
-            self.depositoHallado = -1
+            self.depositoHallado = 'null'
             self.depositoABuscar = -1
             self.listoParaReiniciar = False
             # Deteccion de objetos
@@ -82,6 +82,8 @@ def procesoPrincipal(enviar1):
             self.YtrianguloSuperior = []
             # self.XtrianguloInferior = []
             self.ultimaDiagonalAmarilla = True
+
+            self.esperarHastaObjetoDetectado = False
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -139,7 +141,7 @@ def procesoPrincipal(enviar1):
                 if len(qr_encontrado) == 2:
                     if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar and not self.listoParaReiniciar:
                         print('Dejando paquete!!')
-                        self.depositoHallado = -1
+                        self.depositoHallado = 'null'
                         enviar1.send('stopAndIgnore')
                         self.listoParaReiniciar = True
                 elif len(qr_encontrado) == 1:
@@ -152,19 +154,21 @@ def procesoPrincipal(enviar1):
 
         def _detectarRojo(self,frame):
             #Defino parametros HSV para detectar color rojo 
-            lower_red = np.array([170, 179, 0])
-            upper_red = np.array([255, 255, 255])
+            lower_red = np.array([0, 10, 40])
+            upper_red = np.array([10, 100, 100])
             #Aplico filtro de color con los parametros ya definidos
-            hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
             mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
             #Proceso
-            if np.mean(mask_red) > 15:
+            if len(np.where(mask_red == 255)[0]) > 400:
                 return True
+            else:
+                return False
 
         def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
             if calcularFPS:
                 tiempo_inicial = time.time()
-
+            
             # Detecting objects
             blob = cv2.dnn.blobFromImage(frame, 0.00392, (416, 416), (0, 0, 0), True, crop=False)
             self.net.setInput(blob)
@@ -288,18 +292,19 @@ def procesoPrincipal(enviar1):
         
         def _tomarDecisionMovimiento(self):
             # Si detecto la bocacalle me preparo para doblar o seguir, esta bandera se limpia sola cuando terminamos de cruzar
-            if self.bocacalleDetectada:
-                if self.listoParaReiniciar:
-                    self._moverVehiculoCruzarBocacalle()
-                elif (self.depositoHallado == self.depositoABuscar) and (self.depositoHallado != -1):
-                    self._moverVehiculoEnLineaVerde() #Doblar
-                elif (self.depositoHallado != self.depositoABuscar) and (self.depositoHallado != -1):
-                    # print('########################################################################CRUZAR')
-                    self._moverVehiculoCruzarBocacalle() #Seguir derecho
+            if not self.esperarHastaObjetoDetectado:
+                if self.bocacalleDetectada:
+                    if self.listoParaReiniciar:
+                        self._moverVehiculoCruzarBocacalle()
+                    elif (self.depositoHallado == self.depositoABuscar) and (self.depositoHallado != 'null'):
+                        self._moverVehiculoEnLineaVerde() #Doblar
+                    elif (self.depositoHallado != self.depositoABuscar) and (self.depositoHallado != 'null'):
+                        # print('########################################################################CRUZAR')
+                        self._moverVehiculoCruzarBocacalle() #Seguir derecho
 
-            # Si no detecto bocacalle estoy girando en la linea verde nuevamente o recien comenzando el programa
-            else:
-                self._moverVehiculoEnLineaVerde() #Sigue derecho
+                # Si no detecto bocacalle estoy girando en la linea verde nuevamente o recien comenzando el programa
+                else:
+                    self._moverVehiculoEnLineaVerde() #Sigue derecho
             
         def _moverVehiculoEnLineaVerde(self):
             # print('entrando a la funcion de mover en linea verde')
@@ -584,7 +589,7 @@ def procesoPrincipal(enviar1):
                 if ret:
                     self.frameCompleto = frameCompleto
                     # print('hola')
-                    out.write(frameCompleto)
+                    # out.write(frameCompleto)
                     # self.tiempoDeEsperaInicial = 0 # ToDo: Borrar esta linea
                     # self.depositoABuscar = 0 # ToDo: Borrar esta linea
                     # self.listoParaReiniciar = False
@@ -601,81 +606,53 @@ def procesoPrincipal(enviar1):
                         tiempoInicialFPS = time.time()
 
                         # Comenzamos buscando objetos si se detecta la senda peatonal roja
-                        if False:
-                            if not self.cartelDetectado:
-                                self._detectarRojo(frameCompleto)
-                                if self.RojoDetectado: #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
-                                    #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
-                                    # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
-                                    class_ids = self._buscarObjetos(frameCompleto)
-                                    print('Objetos detectados: ', class_ids) # ToDo: Borrar print
-                                    if class_ids:
-                                        if 2 in class_ids:
-                                            tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                            self.RojoDetectado = False
+                        if not self.cartelDetectado:
+                            if self._detectarRojo(frameCompleto): #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
+                                #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
+                                print('##################### rojo detectado')
+                                enviar1.send('stopAndIgnore')
+                                self.esperarHastaObjetoDetectado = True
+                                # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
+                                class_ids = self._buscarObjetos(frameCompleto)
+                                print('Objetos detectados: ', class_ids) # ToDo: Borrar print
+                                if False:
+                                    if 2 in class_ids:
+                                        tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                        # self.RojoDetectado = False
+                                        print('##################### cartel uno detectado')
+                                        self.cartelDetectado = True
+                                        self.depositoHallado = str(2)
+                                        self.esperarHastaObjetoDetectado = False
+                                    elif 3 in class_ids:
+                                        tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                        # self.RojoDetectado = False
+                                        print('##################### cartel cero detectado')
+                                        if 1 in class_ids:
                                             self.cartelDetectado = True
-                                            self.depositoHallado = 0
-                                        elif 3 in class_ids:
-                                            tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                            self.RojoDetectado = False
-                                            self.cartelDetectado = True
-                                            self.depositoHallado = 1
-                            else:
-                                self._detectarRojo(frameCompleto)
-                                if not self.RojoDetectado:
-                                    # Espero 10segundos para borrar la bandera de cartel detectado
-                                    if (time.time()-tiempoInicialLuegoDeDeteccionCartel) > 10:
-                                        self.cartelDetectado = False
+                                            self.depositoHallado = str(1)
+                                            self.esperarHastaObjetoDetectado = False
+                                            print('##################### cartel cero detectado y semaforo verde')
                         else:
-                            self.cartelDetectado = True
-                            self.depositoHallado = '1'
-                        
-                        # Aca se aplican todos los filtros al frame, luego hough y se guardan las posiciones de las lineas 
-                        # encontradas para luego utilizar en self._detectarBocacalle()
+                            if not self._detectarRojo(frameCompleto):
+                                # Espero 10segundos para borrar la bandera de cartel detectado
+                                if (time.time()-tiempoInicialLuegoDeDeteccionCartel) > 10:
+                                    self.cartelDetectado = False
 
                         Thread(target=self._actualizarValorSaturacion, args=()).start()
-
-                        # print('////////////////////////////////////////////////////: ',self.multiplicadorLuminosidadAmbiente)
-                        
-                        # self._actualizarValorSaturacion(frameCompleto)
-
                         # print("FPS 1: ", (1/(time.time()-tiempoInicialFPS)))
-
-                        # self._analizarFrameForFilasColumnas(frameCompleto)
-
-                        # print("FPS 2: ", (1/(time.time()-tiempoInicialFPS)))
-
                         # Busco constantemente el punto central de la linea verde
                         self._detectarLineaVerde(frameCompleto)
-
-                        # print("FPS 3: ", (1/(time.time()-tiempoInicialFPS)))
-
+                        # print("FPS 2: ", (1/(time.time()-tiempoInicialFPS)))
                         # Busco constantemente la bocacalle y su fin
-                        # self._detectarBocacalle()
                         Thread(target=self._detectarBocacalleVerde, args=()).start()
-                        # self.bocacalleDetectada= False
-                        # self._detectarBocacalleVerde()
-
-                        # print("FPS 4: ", (1/(time.time()-tiempoInicialFPS)))
-
+                        # print("FPS 3: ", (1/(time.time()-tiempoInicialFPS)))
                         # En base a los resultados de self._detectarBocacalle() decido si seguir la linea verde o cruzar la bocacalle
                         self._tomarDecisionMovimiento()
-
-                        # print("FPS 5: ", (1/(time.time()-tiempoInicialFPS)))
-
+                        # print("FPS 4: ", (1/(time.time()-tiempoInicialFPS)))
                         Thread(target=self._buscarDeposito, args=()).start()
 
-                        # self._buscarDeposito(frameCompleto)
-
-                        # print("FPS 6: ", (1/(time.time()-tiempoInicialFPS)))
-
-                        # Mostrar grilla
-                        # self._dibujarGrilla()
                         # Display the resulting frame
-                        # cv2.imshow('frameCompleto', frameCompleto)
-                        cv2.imshow('filtroVerde', self.mask_green)
-                        out2.write(self.mask_green)
-
+                        cv2.imshow('frameCompleto', self.frameCompleto)
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
                         if key == ord('q') or key == ord('Q'):
@@ -684,15 +661,14 @@ def procesoPrincipal(enviar1):
                             cv2.waitKey(10)
                             enviar1.send('exit')
                             break
-
                         # print("FPS: ", (1/(time.time()-tiempoInicialFPS)))
                 else: # Break the loop
                     break
 
             # When everything done, release the video capture object
             self.cap.release()
-            out.release()
-            out2.release()
+            # out.release()
+            # out2.release()
             # Closes all the frames
             cv2.destroyAllWindows()
             exit()
@@ -702,8 +678,8 @@ def procesoPrincipal(enviar1):
 
 
 if __name__ == "__main__":
-    out = cv2.VideoWriter('outputGirandoPistaUnoOpt2.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
-    out2 = cv2.VideoWriter('outputGirandoPistaUnoOpt3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,160))
+    # out = cv2.VideoWriter('outputGirandoPistaUnoOpt2.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
+    # out2 = cv2.VideoWriter('outputGirandoPistaUnoOpt3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,160))
 
     enviar1, recibir1 = Pipe()
     
