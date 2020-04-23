@@ -615,19 +615,24 @@ def procesoPrincipal(enviar1):
                                 # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
                                 class_ids = self._buscarObjetos(frameCompleto)
                                 print('Objetos detectados: ', class_ids) # ToDo: Borrar print
-                                if False:
+                                if class_ids:
                                     if 2 in class_ids:
                                         tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                        cantidad_veces_detectado += 1
                                         # self.RojoDetectado = False
                                         print('##################### cartel uno detectado')
-                                        self.cartelDetectado = True
-                                        self.depositoHallado = str(2)
-                                        self.esperarHastaObjetoDetectado = False
+                                        if cantidad_veces_detectado >= 3:
+                                            cantidad_veces_detectado = 0
+                                            self.cartelDetectado = True
+                                            self.depositoHallado = str(2)
+                                            self.esperarHastaObjetoDetectado = False
                                     elif 3 in class_ids:
                                         tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                        cantidad_veces_detectado += 1
                                         # self.RojoDetectado = False
                                         print('##################### cartel cero detectado')
-                                        if 1 in class_ids:
+                                        if 1 in class_ids and cantidad_veces_detectado >= 3:
+                                            cantidad_veces_detectado = 0
                                             self.cartelDetectado = True
                                             self.depositoHallado = str(1)
                                             self.esperarHastaObjetoDetectado = False
