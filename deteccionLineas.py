@@ -84,6 +84,8 @@ def procesoPrincipal(enviar1):
             self.ultimaDiagonalAmarilla = True
 
             self.esperarHastaObjetoDetectado = False
+            self.cantidad_veces_detectado_0 = 0
+            self.cantidad_veces_detectado_1 = 0
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -618,21 +620,23 @@ def procesoPrincipal(enviar1):
                                 if class_ids:
                                     if 2 in class_ids:
                                         tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                        cantidad_veces_detectado += 1
+                                        self.cantidad_veces_detectado_1 += 1
                                         # self.RojoDetectado = False
                                         print('##################### cartel uno detectado')
-                                        if cantidad_veces_detectado >= 3:
-                                            cantidad_veces_detectado = 0
+                                        if self.cantidad_veces_detectado_1 >= 3:
+                                            self.cantidad_veces_detectado_0 = 0
+                                            self.cantidad_veces_detectado_1 = 0
                                             self.cartelDetectado = True
                                             self.depositoHallado = str(2)
                                             self.esperarHastaObjetoDetectado = False
                                     elif 3 in class_ids:
                                         tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                        cantidad_veces_detectado += 1
+                                        self.cantidad_veces_detectado_0 += 1
                                         # self.RojoDetectado = False
                                         print('##################### cartel cero detectado')
-                                        if 1 in class_ids and cantidad_veces_detectado >= 3:
-                                            cantidad_veces_detectado = 0
+                                        if 1 in class_ids and self.cantidad_veces_detectado_0 >= 3:
+                                            self.cantidad_veces_detectado_0 = 0
+                                            self.cantidad_veces_detectado_1 = 0
                                             self.cartelDetectado = True
                                             self.depositoHallado = str(1)
                                             self.esperarHastaObjetoDetectado = False
