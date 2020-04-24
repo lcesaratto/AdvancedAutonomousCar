@@ -49,6 +49,8 @@ def procesoAuxiliar(recibir1):
 				elif orden == 'stopAndIgnore':
 					self._stop()
 					time.sleep(5)
+				elif orden == 'stopPrioritario':
+					self._stop()
 				# elif orden == 'forwardACiegas':
 				# 	print('MOVIENDOME A CIEGAS')
 				# 	self._forward()
@@ -84,7 +86,7 @@ def procesoAuxiliar(recibir1):
 				time.sleep(0.04)
 				while recibir1.poll():
 					ordenDada = recibir1.recv()
-					if (ordenDada == 'exit') or (ordenDada == 'stopAndIgnore') or (ordenDada == 'forwardACiegas'):
+					if (ordenDada == 'exit') or (ordenDada == 'stopAndIgnore') or (ordenDada == 'stopPrioritario'):
 						self.seDioOrdenConPrioridad = True
 						self.ordenDada = ordenDada
 
