@@ -86,6 +86,8 @@ def procesoPrincipal(enviar1):
             self.esperarHastaObjetoDetectado = False
             self.cantidad_veces_detectado_0 = 0
             self.cantidad_veces_detectado_1 = 0
+
+            self.contandoFramesDeteccionObjetos = 0
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -228,7 +230,7 @@ def procesoPrincipal(enviar1):
                     cv2.rectangle(frameMostrado, (x, y), (x + w, y + h), color, 2)
                     cv2.putText(frameMostrado, label, (x, y + 30), self.font, 3, color, 2)
 
-                cv2.imshow('buscandoObjetos',frameMostrado)
+                # cv2.imshow('buscandoObjetos',frameMostrado)
                 
             if not retornarBoxes and not retornarConfidence:
                 return class_ids
@@ -612,39 +614,42 @@ def procesoPrincipal(enviar1):
                             if self._detectarRojo(frameCompleto): #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
                                 #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
                                 print('##################### rojo detectado')
-                                enviar1.send('stopAndIgnore')
+                                enviar1.send('stopPrioritario')
                                 self.esperarHastaObjetoDetectado = True
                                 # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
-                                class_ids = self._buscarObjetos(frameCompleto)
-                                print('Objetos detectados: ', class_ids) # ToDo: Borrar print
-                                if class_ids:
-                                    if 2 in class_ids:
-                                        tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                        self.cantidad_veces_detectado_1 += 1
-                                        # self.RojoDetectado = False
-                                        print('##################### cartel uno detectado')
-                                        if self.cantidad_veces_detectado_1 >= 3:
-                                            self.cantidad_veces_detectado_0 = 0
-                                            self.cantidad_veces_detectado_1 = 0
-                                            self.cartelDetectado = True
-                                            self.depositoHallado = str(2)
-                                            self.esperarHastaObjetoDetectado = False
-                                    elif 3 in class_ids:
-                                        tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                        self.cantidad_veces_detectado_0 += 1
-                                        # self.RojoDetectado = False
-                                        print('##################### cartel cero detectado')
-                                        if 1 in class_ids and self.cantidad_veces_detectado_0 >= 3:
-                                            self.cantidad_veces_detectado_0 = 0
-                                            self.cantidad_veces_detectado_1 = 0
-                                            self.cartelDetectado = True
-                                            self.depositoHallado = str(1)
-                                            self.esperarHastaObjetoDetectado = False
-                                            print('##################### cartel cero detectado y semaforo verde')
+                                self.contandoFramesDeteccionObjetos += 1
+                                if self.contandoFramesDeteccionObjetos == 5:
+                                    self.contandoFramesDeteccionObjetos = 0
+                                    class_ids = self._buscarObjetos(frameCompleto)
+                                    print('Objetos detectados: ', class_ids) # ToDo: Borrar print
+                                    if class_ids:
+                                        if 2 in class_ids:
+                                            tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                            self.cantidad_veces_detectado_1 += 1
+                                            # self.RojoDetectado = False
+                                            print('##################### cartel uno detectado')
+                                            if self.cantidad_veces_detectado_1 >= 3:
+                                                self.cantidad_veces_detectado_0 = 0
+                                                self.cantidad_veces_detectado_1 = 0
+                                                self.cartelDetectado = True
+                                                self.depositoHallado = str(2)
+                                                self.esperarHastaObjetoDetectado = False
+                                        elif 3 in class_ids:
+                                            tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                            self.cantidad_veces_detectado_0 += 1
+                                            # self.RojoDetectado = False
+                                            print('##################### cartel cero detectado')
+                                            if 1 in class_ids and self.cantidad_veces_detectado_0 >= 3:
+                                                self.cantidad_veces_detectado_0 = 0
+                                                self.cantidad_veces_detectado_1 = 0
+                                                self.cartelDetectado = True
+                                                self.depositoHallado = str(1)
+                                                self.esperarHastaObjetoDetectado = False
+                                                print('##################### cartel cero detectado y semaforo verde')
                         else:
                             if not self._detectarRojo(frameCompleto):
                                 # Espero 10segundos para borrar la bandera de cartel detectado
-                                if (time.time()-tiempoInicialLuegoDeDeteccionCartel) > 10:
+                                if (time.time()-tiempoInicialLuegoDeDeteccionCartel) > 3:
                                     self.cartelDetectado = False
 
                         Thread(target=self._actualizarValorSaturacion, args=()).start()
@@ -661,7 +666,7 @@ def procesoPrincipal(enviar1):
                         Thread(target=self._buscarDeposito, args=()).start()
 
                         # Display the resulting frame
-                        cv2.imshow('frameCompleto', self.frameCompleto)
+                        cv2.imshow('frameCompleto', self.frameCompleto[0][0])
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
                         if key == ord('q') or key == ord('Q'):
