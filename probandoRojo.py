@@ -19,6 +19,10 @@ while cap.isOpened():
         #Proceso
         # if np.mean(mask_red) > 15:
         #     return True
+        y, x = np.where(mask_red == 255)
+        if (len(x)) > 1000:
+            mediana_y = int(statistics.median_low(y))
+            cv2.line(mask_red, (0,mediana_y), (640,mediana_y), (255,255,255), 3)
         
         cv2.imshow('imagen', mask_red)
         key = cv2.waitKey(10)

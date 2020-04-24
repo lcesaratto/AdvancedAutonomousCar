@@ -26,6 +26,19 @@ def procesoAuxiliar(recibir1):
 			pwm = Adafruit_PCA9685.PCA9685()
 			pwm.set_pwm_freq(60)
 			return pwm
+
+		def _delayPersonalizado(self, tiempo_espera):
+			tiempo_inicial = time.time()
+			while (time.time()-tiempo_inicial) < tiempo_espera:
+				if self.seDioOrdenConPrioridad:
+					break
+				time.sleep(0.005)
+				while recibir1.poll():
+					ordenDada = recibir1.recv()
+					if (ordenDada == 'exit') or (ordenDada == 'stopAndIgnore') or (ordenDada == 'stopPrioritario'):
+						self.seDioOrdenConPrioridad = True
+						self.ordenDada = ordenDada
+
 		
 		def setear_parametros(self, servo_fw, servo_bw, servo_suave_min, servo_suave_max, servo_brusco_min, servo_brusco_max):
 			self.servo_fw = servo_fw
@@ -45,50 +58,59 @@ def procesoAuxiliar(recibir1):
 					orden = recibir1.recv()
 
 				if orden == 'exit':
+					self._stop()
 					sys.exit()
 				elif orden == 'stopAndIgnore':
 					self._stop()
-					time.sleep(5)
+					self._delayPersonalizado(5)
+					# time.sleep(5)
 				elif orden == 'stopPrioritario':
 					self._stop()
-				# elif orden == 'forwardACiegas':
-				# 	print('MOVIENDOME A CIEGAS')
-				# 	self._forward()
-				# 	time.sleep(0.5)
-				# 	self._stop()
-				# 	print('listo para volver a avanzar')
 				elif orden == 'stop':
 					self._stop()
+					self._delayPersonalizado(0.4)
 				elif orden == 'forward':
 					self._forward()
-					time.sleep(0.2)
+					self._delayPersonalizado(0.2)
+					# time.sleep(0.2)
 					self._stop()
+					self._delayPersonalizado(0.04)
 				elif orden == 'backward':
 					self._backward()
-					time.sleep(0.2)
+					self._delayPersonalizado(0.2)
+					# time.sleep(0.2)
 					self._stop()
+					self._delayPersonalizado(0.04)
 				elif orden == 'giroBruDer':
 					self._giroDerechaBrusco()
-					time.sleep(0.1)
+					self._delayPersonalizado(0.1)
+					# time.sleep(0.1)
 					self._stop()
+					self._delayPersonalizado(0.04)
 				elif orden == 'giroBruIzq':
 					self._giroIzquierdaBrusco()
-					time.sleep(0.1)
+					self._delayPersonalizado(0.1)
+					# time.sleep(0.1)
 					self._stop()
+					self._delayPersonalizado(0.04)
 				elif orden == 'giroSuaDer':
 					self._giroDerechaSuave()
-					time.sleep(0.1)
+					self._delayPersonalizado(0.1)
+					# time.sleep(0.1)
 					self._stop()
+					self._delayPersonalizado(0.04)
 				elif orden == 'giroSuaIzq':
 					self._giroIzquierdaSuave()
-					time.sleep(0.1)
+					self._delayPersonalizado(0.1)
+					# time.sleep(0.1)
 					self._stop()
-				time.sleep(0.04)
-				while recibir1.poll():
-					ordenDada = recibir1.recv()
-					if (ordenDada == 'exit') or (ordenDada == 'stopAndIgnore') or (ordenDada == 'stopPrioritario'):
-						self.seDioOrdenConPrioridad = True
-						self.ordenDada = ordenDada
+					self._delayPersonalizado(0.04)
+				# time.sleep(0.4)
+				# while recibir1.poll():
+				# 	ordenDada = recibir1.recv()
+				# 	if (ordenDada == 'exit') or (ordenDada == 'stopAndIgnore') or (ordenDada == 'stopPrioritario'):
+				# 		self.seDioOrdenConPrioridad = True
+				# 		self.ordenDada = ordenDada
 
 		def _forward(self):
 			self.pwm.set_pwm(2, 0, self.servo_min) #Atras Derecha

@@ -88,6 +88,8 @@ def procesoPrincipal(enviar1):
             self.cantidad_veces_detectado_1 = 0
 
             self.contandoFramesDeteccionObjetos = 0
+            self.estoyDistanciaCorrecta = False
+            self.mediana_y = 0
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -163,10 +165,14 @@ def procesoPrincipal(enviar1):
             #Aplico filtro de color con los parametros ya definidos
             hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
             mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
-            x, y = np.where(mask_red == 255)
-            yindice = np.where(abs(y-280) < 280*0.3)
+            # y, x = np.where(mask_red == 255)
+            # yindice = np.where(abs(y-280) < 280*0.3)
             #Proceso
-            if len(x[yindice]) > 700:
+            # if len(x[yindice]) > 700:
+
+            y, x = np.where(mask_red == 255)
+            self.mediana_y = int(statistics.median_low(y))
+            if len(x) > 1000:
                 return True
             else:
                 return False
