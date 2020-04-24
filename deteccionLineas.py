@@ -90,6 +90,7 @@ def procesoPrincipal(enviar1):
             self.contandoFramesDeteccionObjetos = 0
             self.estoyDistanciaCorrecta = False
             self.mediana_y = 0
+            self.hiloCentradoRojoYaLanzado = False
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -171,8 +172,12 @@ def procesoPrincipal(enviar1):
             # if len(x[yindice]) > 700:
 
             y, x = np.where(mask_red == 255)
+            if len(x) == 0:
+                return False
             self.mediana_y = int(statistics.median_low(y))
-            if len(x) > 1000:
+
+            # if len(x) > 1000:
+            if (250 < self.mediana_y):
                 return True
             else:
                 return False
@@ -476,6 +481,57 @@ def procesoPrincipal(enviar1):
                         enviar1.send('forward')
             print('fin hilo')
 
+        def _hiloParaAcercarseSendaRoja(self):
+            print('lanzando hilo rojo')
+            contandoFramesParado = 0
+            contandoFramesBackward = 0
+
+            while (250 < self.mediana_y < 310):
+
+                frame = copy.deepcopy(self.frameCompleto[0:240,0:int(self.width)])
+                lower_green = np.array([40, int(20*self.multiplicadorLuminosidadAmbiente), 100])
+                upper_green = np.array([80, 230, 140])
+                frame = cv2.GaussianBlur(frame, (3, 3), 0)
+                hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+                mask_green = cv2.inRange(hsv_green, lower_green, upper_green)
+                y, x = np.where(mask_green == 255)
+                cantidad_puntos = round(len(x)*0.2)
+                try:
+                    indices = np.argpartition(y, cantidad_puntos)
+                    punto_a_seguir = statistics.median(x[indices[:cantidad_puntos]])
+                except:
+                    punto_a_seguir = 0
+
+                distancia_al_centro = (self.width/2) - punto_a_seguir
+
+                if abs(distancia_al_centro) == 320:
+                    if contandoFramesParado != 3:
+                        enviar1.send('stop')
+                        contandoFramesParado += 1
+                        contandoFramesBackward = 0
+                    else:
+                        enviar1.send('backward')
+                        contandoFramesBackward += 1
+                        if contandoFramesBackward == 2:
+                            contandoFramesParado = 0
+                else:
+                    limite1 = 40
+                    limite2 = 170
+                    if limite2 > distancia_al_centro > limite1:
+                        enviar1.send('giroSuaIzq')
+                    elif -limite1 > distancia_al_centro > -limite2:
+                        enviar1.send('giroSuaDer')
+                    elif distancia_al_centro >= limite2:
+                        enviar1.send('giroBruIzq')
+                    elif -limite2 >= distancia_al_centro:
+                        enviar1.send('giroBruDer')
+                    else:
+                        enviar1.send('forward')
+            
+            self.estoyDistanciaCorrecta = True
+            self.hiloCentradoRojoYaLanzado = False
+            print('fin hilo rojo')
+
         def _buscarDeposito(self):
             self._buscar_qr(self.frameCompleto)
 
@@ -625,6 +681,8 @@ def procesoPrincipal(enviar1):
                                 enviar1.send('stopPrioritario')
                                 self.esperarHastaObjetoDetectado = True
                                 # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
+                                
+                                # if self.estoyDistanciaCorrecta:
                                 self.contandoFramesDeteccionObjetos += 1
                                 if self.contandoFramesDeteccionObjetos == 5:
                                     self.contandoFramesDeteccionObjetos = 0
@@ -655,6 +713,8 @@ def procesoPrincipal(enviar1):
                                                 self.depositoHallado = str(1)
                                                 self.esperarHastaObjetoDetectado = False
                                                 print('##################### cartel cero detectado y semaforo verde')
+                                # elif not self.hiloCentradoRojoYaLanzado:
+                                #     Thread(target=self._hiloParaAcercarseSendaRoja, args=()).start()
                         else:
                             if not self._detectarRojo(frameCompleto):
                                 # Espero 10segundos para borrar la bandera de cartel detectado
