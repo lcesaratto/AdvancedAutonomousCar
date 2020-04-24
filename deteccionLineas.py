@@ -161,8 +161,10 @@ def procesoPrincipal(enviar1):
             #Aplico filtro de color con los parametros ya definidos
             hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
             mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
+            x, y = np.where(mask_red == 255)
+            yindice = np.where(abs(y-280) < 280*0.3)
             #Proceso
-            if len(np.where(mask_red == 255)[0]) > 400:
+            if len(x[yindice]) > 700:
                 return True
             else:
                 return False
