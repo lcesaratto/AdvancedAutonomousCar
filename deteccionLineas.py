@@ -630,7 +630,8 @@ def procesoPrincipal(enviar1):
                                             print('##################### cartel uno detectado')
                                             if self.cantidad_veces_detectado_1 >= 3:
                                                 self.cantidad_veces_detectado_0 = 0
-                                                self.cantidad_veces_detectado_1 = 0
+                                                self.cantidad_veces_detectado_1 = 0 
+                                                
                                                 self.cartelDetectado = True
                                                 self.depositoHallado = str(2)
                                                 self.esperarHastaObjetoDetectado = False
