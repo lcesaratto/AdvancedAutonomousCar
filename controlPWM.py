@@ -17,6 +17,7 @@ def procesoAuxiliar(recibir1):
 			self.servo_suave_max = 0
 			self.servo_brusco_min = 0
 			self.servo_brusco_max = 0
+			self.servo_en_el_lugar = 0
 			self.pwm = self._iniciarPWM()
 			self.ordenDada = 'none'
 			self.seDioOrdenConPrioridad = False
@@ -40,13 +41,15 @@ def procesoAuxiliar(recibir1):
 						self.ordenDada = ordenDada
 
 		
-		def setear_parametros(self, servo_fw, servo_bw, servo_suave_min, servo_suave_max, servo_brusco_min, servo_brusco_max):
+		def setear_parametros(self, servo_fw, servo_bw, servo_suave_min, servo_suave_max, 
+							  servo_brusco_min, servo_brusco_max, servo_en_el_lugar):
 			self.servo_fw = servo_fw
 			self.servo_bw = servo_bw
 			self.servo_suave_min = servo_suave_min
 			self.servo_suave_max = servo_suave_max
 			self.servo_brusco_min = servo_brusco_min
 			self.servo_brusco_max = servo_brusco_max
+			self.servo_en_el_lugar = servo_en_el_lugar
 			return self
 
 		def start_loop(self):
@@ -105,6 +108,18 @@ def procesoAuxiliar(recibir1):
 					# time.sleep(0.1)
 					self._stop()
 					self._delayPersonalizado(0.04)
+				elif orden == 'giroEnElLugarIzq':
+					self._giroIzquierdaEnElLugar()
+					time.sleep(0.1)
+					# time.sleep(0.1)
+					self._stop()
+					self._delayPersonalizado(0.04)
+				elif orden == 'giroEnElLugarDer':
+					self._giroDerechaEnElLugar()
+					time.sleep(0.1)
+					# time.sleep(0.1)
+					self._stop()
+					self._delayPersonalizado(0.04)
 				# time.sleep(0.4)
 				# while recibir1.poll():
 				# 	ordenDada = recibir1.recv()
@@ -160,6 +175,22 @@ def procesoAuxiliar(recibir1):
 			self.pwm.set_pwm(0, 0, self.servo_max)
 			self.pwm.set_pwm(4, 0, self.servo_max)
 
+		def _giroIzquierdaEnElLugar(self):
+			self.pwm.set_pwm(2, 0, self.servo_min) #Atras derecha
+			self.pwm.set_pwm(6, 0, self.servo_brusco_min) #Atras izquierda
+			self.pwm.set_pwm(1, 0, self.servo_brusco_max) #Delante derecha
+			self.pwm.set_pwm(5, 0, self.servo_min) #Delante izquierda
+			self.pwm.set_pwm(0, 0, self.servo_max)
+			self.pwm.set_pwm(4, 0, self.servo_max)
+
+		def _giroDerechaEnElLugar(self):
+			self.pwm.set_pwm(2, 0, self.servo_brusco_min) #Atras derecha
+			self.pwm.set_pwm(6, 0, self.servo_min) #Atras izquierda
+			self.pwm.set_pwm(1, 0, self.servo_min) #Delante derecha
+			self.pwm.set_pwm(5, 0, self.servo_brusco_max) #Delante izquierda
+			self.pwm.set_pwm(0, 0, self.servo_max)
+			self.pwm.set_pwm(4, 0, self.servo_max)
+
 		def _stop(self):
 			self.pwm.set_pwm(2, 0, 0) #Atras Derecha
 			self.pwm.set_pwm(6, 0, 0) #Atras Izquierda
@@ -169,5 +200,6 @@ def procesoAuxiliar(recibir1):
 	controladorPwm = controladorPWM()
 	controladorPwm.setear_parametros(servo_fw=1100, servo_bw=1100, 
                          servo_suave_min=2300, servo_suave_max=600, 
-                         servo_brusco_min=1000, servo_brusco_max=2600)
+                         servo_brusco_min=1000, servo_brusco_max=2600,
+						 servo_en_el_lugar = 2000)
 	controladorPwm.start_loop()
