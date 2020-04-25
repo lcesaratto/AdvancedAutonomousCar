@@ -134,12 +134,13 @@ def procesoPrincipal(enviar1):
             cv2.waitKey(10)
             barcodes = pyzbar.decode(frame)
             if barcodes:
-                cv2.destroyWindow('buscandoQR')
-                barcodeData = barcodes[0].data.decode("utf-8")
-                if barcodeData[0] == 'I':
-                    print("Deposito a buscar: ", barcodeData[1])
-                    self.depositoABuscar = barcodeData[1]
-                    self.tiempoDeEsperaInicial = time.time()
+                for barcode in barcodes:
+                    barcodeData = barcode.data.decode("utf-8")
+                    if barcodeData[0] == 'I':
+                        cv2.destroyWindow('buscandoQR')
+                        print("Deposito a buscar: ", barcodeData[1])
+                        self.depositoABuscar = barcodeData[1]
+                        self.tiempoDeEsperaInicial = time.time()
 
         def _buscar_qr(self, frame):
             barcodes = pyzbar.decode(frame)
