@@ -175,9 +175,10 @@ def procesoPrincipal(enviar1):
             if len(x) == 0:
                 return False
             self.mediana_y = int(statistics.median_low(y))
+            print(self.mediana_y)
 
             # if len(x) > 1000:
-            if (250 < self.mediana_y):
+            if (250 < self.mediana_y) and (len(x)>500):
                 return True
             else:
                 return False
@@ -692,10 +693,11 @@ def procesoPrincipal(enviar1):
                                         if 2 in class_ids:
                                             tiempoInicialLuegoDeDeteccionCartel = time.time()
                                             self.cantidad_veces_detectado_1 += 1
+                                            self.cantidad_veces_detectado_0 = 0
                                             # self.RojoDetectado = False
                                             print('##################### cartel uno detectado')
                                             if self.cantidad_veces_detectado_1 >= 3:
-                                                self.cantidad_veces_detectado_0 = 0
+                                                # self.cantidad_veces_detectado_0 = 0
                                                 self.cantidad_veces_detectado_1 = 0 
                                                 
                                                 self.cartelDetectado = True
@@ -704,11 +706,11 @@ def procesoPrincipal(enviar1):
                                         elif 3 in class_ids:
                                             tiempoInicialLuegoDeDeteccionCartel = time.time()
                                             self.cantidad_veces_detectado_0 += 1
+                                            self.cantidad_veces_detectado_1 = 0
                                             # self.RojoDetectado = False
                                             print('##################### cartel cero detectado')
                                             if 1 in class_ids and self.cantidad_veces_detectado_0 >= 3:
                                                 self.cantidad_veces_detectado_0 = 0
-                                                self.cantidad_veces_detectado_1 = 0
                                                 self.cartelDetectado = True
                                                 self.depositoHallado = str(1)
                                                 self.esperarHastaObjetoDetectado = False
