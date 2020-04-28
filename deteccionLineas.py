@@ -90,6 +90,8 @@ def procesoPrincipal(enviar1):
             self.contandoFramesDeteccionObjetos = 0
             self.mediana_y = 0
             self.contandoFramesEstandoTorcido = 0
+
+            self.paseElSemaforo = False
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -638,7 +640,23 @@ def procesoPrincipal(enviar1):
                                     self.contandoFramesDeteccionObjetos = 0
                                     class_ids = self._buscarObjetos(frameCompleto)
                                     print('Objetos detectados: ', class_ids) # ToDo: Borrar print
+
                                     if class_ids:
+                                        if not self.paseElSemaforo:
+                                            if ((1 in class_ids) or (0 in class_ids)) and (len(class_ids) == 1):
+                                                pass
+                                            elif ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 1):
+                                                pass
+                                            elif ((0 in class_ids) or (1 in class_ids)) and ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 2):
+                                                pass
+                                        
+                                        else:
+                                            if (0 in class_ids) and (len(class_ids) == 1):
+                                                pass
+                                            elif (1 in class_ids) and (len(class_ids) == 1):
+                                                pass
+
+
                                         if ((1 in class_ids) or (0 in class_ids)) and (len(class_ids) == 1):
                                             self.contandoFramesEstandoTorcido += 1
                                             if self.contandoFramesEstandoTorcido == 10:
@@ -735,6 +753,7 @@ def procesoPrincipal(enviar1):
 if __name__ == "__main__":
     # out = cv2.VideoWriter('outputGirandoPistaUnoOpt2.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
     # out2 = cv2.VideoWriter('outputGirandoPistaUnoOpt3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,160))
+    # out = cv2.VideoWriter('video_de_prueba.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 20, (640,480))
 
     enviar1, recibir1 = Pipe()
     
