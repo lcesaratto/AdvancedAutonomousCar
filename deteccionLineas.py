@@ -92,6 +92,8 @@ def procesoPrincipal(enviar1):
             self.contandoFramesEstandoTorcido = 0
 
             self.paseElSemaforo = False
+
+            self.buscandoParadaEnDeposito = False
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -151,7 +153,9 @@ def procesoPrincipal(enviar1):
                     if qr_encontrado[0] == 'F' and qr_encontrado[1] == self.depositoABuscar and not self.listoParaReiniciar:
                         print('Dejando paquete!!')
                         self.depositoHallado = 'null'
-                        enviar1.send('stopAndIgnore')
+                        # enviar1.send('stopAndIgnore')
+                        Thread(target=self._detectarRojoEnDeposito, args=()).start()
+                        self.buscandoParadaEnDeposito = True
                         self.listoParaReiniciar = True
                 elif len(qr_encontrado) == 1:
                     if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
@@ -162,8 +166,11 @@ def procesoPrincipal(enviar1):
                         self.depositoABuscar = -1
                         self.paseElSemaforo = False
 
-        def _detectarRojo(self,frame):
-            #Defino parametros HSV para detectar color rojo 
+        def _detectarRojo(self,frame):  
+            #Defino parametros HSV para detectar color rojo
+            if self.buscandoParadaEnDeposito:
+                return False
+
             lower_red = np.array([0, 10, 40])
             upper_red = np.array([10, 100, 100])
             #Aplico filtro de color con los parametros ya definidos
@@ -185,6 +192,38 @@ def procesoPrincipal(enviar1):
                 return True
             else:
                 return False
+
+        def _detectarRojoEnDeposito(self):
+            if self.buscandoParadaEnDeposito:
+                while True:
+                    frame = self.frameCompleto
+
+                    lower_red = np.array([0, 10, 40])
+                    upper_red = np.array([10, 100, 100])
+                    #Aplico filtro de color con los parametros ya definidos
+                    hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+                    mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
+                    # y, x = np.where(mask_red == 255)
+                    # yindice = np.where(abs(y-280) < 280*0.3)
+                    #Proceso
+                    # if len(x[yindice]) > 700:
+
+                    y, x = np.where(mask_red == 255)
+                    # if len(x) == 0:
+                    #     return False
+                    self.mediana_y = int(statistics.median_low(y))
+                    # print(self.mediana_y)
+
+                    # if len(x) > 1000:
+                    if (280 < self.mediana_y) and (len(x)>300):
+                        # return True
+                        enviar1.send('stopAndIgnore')
+                        break
+
+                    tiempo_inicial = time.time()
+                    while (time.time()-tiempo_inicial < 10):
+                        pass
+                    self.buscandoParadaEnDeposito = False
 
         def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
             if calcularFPS:
