@@ -160,6 +160,7 @@ def procesoPrincipal(enviar1):
                         self.listoParaReiniciar = False
                         self.tiempoDeEsperaInicial = -1
                         self.depositoABuscar = -1
+                        self.paseElSemaforo = False
 
         def _detectarRojo(self,frame):
             #Defino parametros HSV para detectar color rojo 
@@ -644,58 +645,65 @@ def procesoPrincipal(enviar1):
                                     if class_ids:
                                         if not self.paseElSemaforo:
                                             if ((1 in class_ids) or (0 in class_ids)) and (len(class_ids) == 1):
-                                                pass
+                                                self.contandoFramesEstandoTorcido += 1
+                                                if self.contandoFramesEstandoTorcido == 10:
+                                                    self.contandoFramesEstandoTorcido = 0
+                                                    enviar1.send('giroEnElLugarDer')
                                             elif ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 1):
-                                                pass
+                                                self.contandoFramesEstandoTorcido += 1
+                                                if self.contandoFramesEstandoTorcido == 10:
+                                                    self.contandoFramesEstandoTorcido = 0
+                                                    enviar1.send('giroEnElLugarIzq')
                                             elif ((0 in class_ids) or (1 in class_ids)) and ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 2):
-                                                pass
+                                                if (2 in class_ids):
+                                                    self.contandoFramesEstandoTorcido = 0
+                                                    tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                                    self.cantidad_veces_detectado_1 += 1
+                                                    self.cantidad_veces_detectado_0 = 0
+                                                    if 1 in class_ids and self.cantidad_veces_detectado_1 >= 3:
+                                                        self.cantidad_veces_detectado_1 = 0
+                                                        self.cartelDetectado = True
+                                                        self.depositoHallado = str(2)
+                                                        self.esperarHastaObjetoDetectado = False
+                                                        self.paseElSemaforo = True
+                                                        print('##################### cartel uno detectado y semaforo verde')
+                                                elif (3 in class_ids):
+                                                    self.contandoFramesEstandoTorcido = 0
+                                                    tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                                    self.cantidad_veces_detectado_0 += 1
+                                                    self.cantidad_veces_detectado_1 = 0
+                                                    if 1 in class_ids and self.cantidad_veces_detectado_0 >= 3:
+                                                        self.cantidad_veces_detectado_0 = 0
+                                                        self.cartelDetectado = True
+                                                        self.depositoHallado = str(1)
+                                                        self.esperarHastaObjetoDetectado = False
+                                                        self.paseElSemaforo = True
+                                                        print('##################### cartel cero detectado y semaforo verde')
                                         
                                         else:
-                                            if (0 in class_ids) and (len(class_ids) == 1):
-                                                pass
-                                            elif (1 in class_ids) and (len(class_ids) == 1):
-                                                pass
-
-
-                                        if ((1 in class_ids) or (0 in class_ids)) and (len(class_ids) == 1):
-                                            self.contandoFramesEstandoTorcido += 1
-                                            if self.contandoFramesEstandoTorcido == 10:
+                                            if (2 in class_ids) and (len(class_ids) == 1):
                                                 self.contandoFramesEstandoTorcido = 0
-                                                enviar1.send('giroEnElLugarDer')
-                                        elif (3 in class_ids) and (len(class_ids) == 1):
-                                            self.contandoFramesEstandoTorcido += 1
-                                            if self.contandoFramesEstandoTorcido == 10:
-                                                self.contandoFramesEstandoTorcido = 0
-                                                enviar1.send('giroEnElLugarIzq')
-                                        elif (2 in class_ids):
-                                            self.contandoFramesEstandoTorcido = 0
-                                            tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                            self.cantidad_veces_detectado_1 += 1
-                                            self.cantidad_veces_detectado_0 = 0
-                                            # self.RojoDetectado = False
-                                            print('##################### cartel uno detectado')
-                                            if (len(class_ids) == 1):
+                                                tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                                self.cantidad_veces_detectado_1 += 1
+                                                self.cantidad_veces_detectado_0 = 0
                                                 if self.cantidad_veces_detectado_1 >= 3:
-                                                    # self.cantidad_veces_detectado_0 = 0
                                                     self.cantidad_veces_detectado_1 = 0 
-                                                    
                                                     self.cartelDetectado = True
                                                     self.depositoHallado = str(2)
                                                     self.esperarHastaObjetoDetectado = False
-                                        elif (3 in class_ids):
-                                            self.contandoFramesEstandoTorcido = 0
-                                            tiempoInicialLuegoDeDeteccionCartel = time.time()
-                                            self.cantidad_veces_detectado_0 += 1
-                                            self.cantidad_veces_detectado_1 = 0
-                                            # self.RojoDetectado = False
-                                            print('##################### cartel cero detectado')
-                                            if ((0 in class_ids) or (1 in class_ids)) and (len(class_ids) == 2):
-                                                if 1 in class_ids and self.cantidad_veces_detectado_0 >= 3:
-                                                    self.cantidad_veces_detectado_0 = 0
+                                                    print('##################### cartel uno detectado')
+                                            elif (3 in class_ids) and (len(class_ids) == 1):
+                                                self.contandoFramesEstandoTorcido = 0
+                                                tiempoInicialLuegoDeDeteccionCartel = time.time()
+                                                self.cantidad_veces_detectado_0 += 1
+                                                self.cantidad_veces_detectado_1 = 0
+                                                if self.cantidad_veces_detectado_0 >= 3:
+                                                    self.cantidad_veces_detectado_0 = 0 
                                                     self.cartelDetectado = True
                                                     self.depositoHallado = str(1)
                                                     self.esperarHastaObjetoDetectado = False
-                                                    print('##################### cartel cero detectado y semaforo verde')
+                                                    print('##################### cartel cero detectado')
+
                                     else:
                                         self.contandoFramesEstandoTorcido += 1
                                         if self.contandoFramesEstandoTorcido == 10:
