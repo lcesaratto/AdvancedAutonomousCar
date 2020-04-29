@@ -220,9 +220,7 @@ def procesoPrincipal(enviar1):
                         enviar1.send('stopAndIgnore')
                         break
 
-                    tiempo_inicial = time.time()
-                    while (time.time()-tiempo_inicial < 10):
-                        pass
+                    time.sleep(10)
                     self.buscandoParadaEnDeposito = False
 
         def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
