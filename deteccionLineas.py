@@ -154,8 +154,8 @@ def procesoPrincipal(enviar1):
                         print('Dejando paquete!!')
                         self.depositoHallado = 'null'
                         # enviar1.send('stopAndIgnore')
-                        Thread(target=self._detectarRojoEnDeposito, args=()).start()
                         self.buscandoParadaEnDeposito = True
+                        Thread(target=self._detectarRojoEnDeposito, args=()).start()
                         self.listoParaReiniciar = True
                 elif len(qr_encontrado) == 1:
                     if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
@@ -196,7 +196,7 @@ def procesoPrincipal(enviar1):
         def _detectarRojoEnDeposito(self):
             if self.buscandoParadaEnDeposito:
                 while True:
-                    frame = self.frameCompleto
+                    frame = copy.deepcopy(self.frameCompleto)
 
                     lower_red = np.array([0, 10, 40])
                     upper_red = np.array([10, 100, 100])
@@ -209,19 +209,21 @@ def procesoPrincipal(enviar1):
                     # if len(x[yindice]) > 700:
 
                     y, x = np.where(mask_red == 255)
-                    # if len(x) == 0:
-                    #     return False
-                    self.mediana_y = int(statistics.median_low(y))
+                    if len(x) == 0:
+                        continue
+                    mediana_y = int(statistics.median_low(y))
                     # print(self.mediana_y)
+                    # print('VALORES: ',len(x), mediana_y)
 
                     # if len(x) > 1000:
-                    if (280 < self.mediana_y) and (len(x)>300):
+                    if (280 < mediana_y) and (len(x)>300):
                         # return True
                         enviar1.send('stopAndIgnore')
                         break
 
-                    time.sleep(10)
-                    self.buscandoParadaEnDeposito = False
+                # print('SALIENDO DEL LOOP')
+                time.sleep(10)
+                self.buscandoParadaEnDeposito = False
 
         def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
             if calcularFPS:
@@ -683,12 +685,12 @@ def procesoPrincipal(enviar1):
                                         if not self.paseElSemaforo:
                                             if ((1 in class_ids) or (0 in class_ids)) and (len(class_ids) == 1):
                                                 self.contandoFramesEstandoTorcido += 1
-                                                if self.contandoFramesEstandoTorcido == 10:
+                                                if self.contandoFramesEstandoTorcido == 3:
                                                     self.contandoFramesEstandoTorcido = 0
                                                     enviar1.send('giroEnElLugarDer')
                                             elif ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 1):
                                                 self.contandoFramesEstandoTorcido += 1
-                                                if self.contandoFramesEstandoTorcido == 10:
+                                                if self.contandoFramesEstandoTorcido == 3:
                                                     self.contandoFramesEstandoTorcido = 0
                                                     enviar1.send('giroEnElLugarIzq')
                                             elif ((0 in class_ids) or (1 in class_ids)) and ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 2):
@@ -743,7 +745,7 @@ def procesoPrincipal(enviar1):
 
                                     else:
                                         self.contandoFramesEstandoTorcido += 1
-                                        if self.contandoFramesEstandoTorcido == 10:
+                                        if self.contandoFramesEstandoTorcido == 3:
                                                 self.contandoFramesEstandoTorcido = 0
                                                 enviar1.send('giroEnElLugarDer')
                                         # Si no veo nada
