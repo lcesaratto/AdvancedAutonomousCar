@@ -5,7 +5,7 @@ import statistics
 
 cap = cv2.VideoCapture(0)
 width = 640
-
+i = 1
 while cap.isOpened():
     ret, frameOriginal = cap.read()
     if ret:
@@ -25,12 +25,14 @@ while cap.isOpened():
             cv2.line(mask_red, (0,mediana_y), (640,mediana_y), (255,255,255), 3)
         
         cv2.imshow('imagen', mask_red)
-        key = cv2.waitKey(10)
+        key = cv2.waitKey(1000)
         if key == ord('q') or key == ord('Q'):
             break
-        if key == ord('c'):
-            cv2.imwrite('sendaroja.jpg', frame)
-            print(len(np.where(mask_red == 255)[0]))
+        if key == ord('s') or key == ord('S'):
+            continue
+        if key == ord('c') or key == ord('C'):
+            cv2.imwrite("sendaRoja"+str(i)+".jpg", mask_red)
+            i += 1
 cap.release()
 # Closes all the frames
 cv2.destroyAllWindows()

@@ -7,10 +7,12 @@ width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
 
 # out = cv2.VideoWriter('VideoDeMuestra.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 20, (640,480))
 
+i = 1
 
 while cap.isOpened():
     ret, frame = cap.read()
     if ret:
+        frameOriginal = deepcopy(frame)
         lower_green = np.array([40, int(20*1.8), 100])
         upper_green = np.array([80, 230, 140])
         frame = cv2.GaussianBlur(frame, (3, 3), 0)
@@ -56,10 +58,14 @@ while cap.isOpened():
                         continue
                 except:
                     continue
-                if suficientesPuntos and diagonalNoCruza: 
-                    # self.XtrianguloSuperior = x_up_left    
-                    # self.XtrianguloInferior = x_down_right       
-                    frame[:,:,2] = frame[:,:,2] + 30
+                if suficientesPuntos and diagonalNoCruza:
+                    print('lala')
+                    frameOriginal[:,:,0] =  lower_right_triangle*255 + upper_left_triangle*255 
+                    frameOriginal[:,:,1] =  lower_right_triangle*55 + upper_left_triangle*55+ np.flipud(np.tril(np.flipud(np.ones((480,640),int)), 0))*200 + np.fliplr(np.tril(np.fliplr(np.ones((480,640),int)), -1))*200
+                    frameOriginal[:,:,2] =  lower_right_triangle*55 + upper_left_triangle*55 + np.flipud(np.tril(np.flipud(np.ones((480,640),int)), 0))*200 + np.fliplr(np.tril(np.fliplr(np.ones((480,640),int)), -1))*200
+                    cv2.line(frameOriginal,(0,480),(640,0),(0,255,255), 2)
+                    cv2.line(frameOriginal,(0,int(b_up)),(int(-b_up/m_up),0),(0,0,255), 2)
+                    cv2.line(frameOriginal,(int((480-b_down)/m_down),480),(640,int(640*m_down+b_down)),(0,0,255), 2)
                     break
 
             else:
@@ -90,21 +96,33 @@ while cap.isOpened():
                     diagonalNoCruza = False
 
                 if suficientesPuntos and diagonalNoCruza:  
-                    frame[:,:,0] = frame[:,:,0] + 30
+                    print('lala')
+                    frameOriginal[:,:,0] =  lower_left_triangle*225 + upper_right_triangle*225 + np.tril(np.ones((480,640),int), -1)*30 + np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(np.ones((480,640),int))), 0)))*30
+                    frameOriginal[:,:,1] =  lower_left_triangle*255 + upper_right_triangle*255
+                    frameOriginal[:,:,2] =  lower_left_triangle*255 + upper_right_triangle*255
+                    cv2.line(frameOriginal,(0,0),(640,480),(255,0,0), 2)
+                    cv2.line(frameOriginal,(0,int(b_up)),(640,int(m_up*640+b_up)),(0,255,0), 2)
+                    cv2.line(frameOriginal,(0,int(b_down)),(int((480-b_down)/m_down),480),(0,255,0), 2)
+
 
         # cv2.imshow('lower_right', lower_right_triangle)
-        cv2.imshow('imagen original', frame)
+        cv2.imshow('imagen original', frameOriginal)
         # out.write(frameDiagonal)
         # cv2.imshow('eleccion de diagonal', frameDiagonal)
-        key = cv2.waitKey(10)
+        key = cv2.waitKey(1000)
         if key == ord('q') or key == ord('Q'):
             break
+        if key == ord('s') or key == ord('S'):
+            continue
         if key == ord('c') or key == ord('C'):
-            print('cantidad de puntos arriba:', len(x_up_left))
-            print('cantidad de puntos abajo:', len(x_down_right))
-        if key == ord('v') or key == ord('V'):
-            print('cantidad de puntos arriba:', len(x_up_right))
-            print('cantidad de puntos abajo:', len(x_down_left))
+            cv2.imwrite("probandoBocacalle"+str(i)+".jpg", frameOriginal)
+            i += 1
+        # if key == ord('c') or key == ord('C'):
+        #     print('cantidad de puntos arriba:', len(x_up_left))
+        #     print('cantidad de puntos abajo:', len(x_down_right))
+        # if key == ord('v') or key == ord('V'):
+        #     print('cantidad de puntos arriba:', len(x_up_right))
+        #     print('cantidad de puntos abajo:', len(x_down_left))
 
     else:
         break
