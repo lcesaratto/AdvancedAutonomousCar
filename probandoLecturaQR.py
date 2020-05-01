@@ -23,13 +23,13 @@ while cap.isOpened():
 
 
         cv2.imshow('imagen', frame)
-        key = cv2.waitKey(10)
+        key = cv2.waitKey(1000)
         if key == ord('q') or key == ord('Q'):
             break
         if key == ord('s') or key == ord('S'):
             continue
         if key == ord('c') or key == ord('C'):
-            cv2.imwrite("lecturaQR"+str(i)+".jpg", frame)
+            cv2.imwrite("NlecturaQR"+str(i)+".jpg", frame)
             i += 1
 
 cap.release()

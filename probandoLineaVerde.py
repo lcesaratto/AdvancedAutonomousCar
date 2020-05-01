@@ -9,7 +9,7 @@ i = 1
 while cap.isOpened():
     ret, frameOriginal = cap.read()
     if ret:
-
+        frameCamara = copy.deepcopy(frameOriginal)
         frame = copy.deepcopy(frameOriginal[320:480,0:640]) #320,480
         #Defino parametros HSV para detectar color verde 
         lower_green = np.array([40, int(20*2.5), 100])
@@ -36,15 +36,19 @@ while cap.isOpened():
         frameAMostrar[:,:,2] = mask_green
         cv2.line(frameAMostrar,(ubicacion_punto_verde,0),(ubicacion_punto_verde,480),(0,255,0), 3)
 
+        frameCamara[320:480,:,2] = frameCamara[320:640,:,2] + 60
+
         
         cv2.imshow('imagen', frameAMostrar)
-        key = cv2.waitKey(10)
+        # cv2.imshow('original', frameCamara)
+        key = cv2.waitKey(1000)
         if key == ord('q') or key == ord('Q'):
             break
         if key == ord('s') or key == ord('S'):
             continue
         if key == ord('c') or key == ord('C'):
-            cv2.imwrite("lineaVerde"+str(i)+".jpg", frameAMostrar)
+            cv2.imwrite("NlineaVerde"+str(i)+".jpg", frameAMostrar)
+            cv2.imwrite("NlineaVerdeOriginal"+str(i)+".jpg", frameCamara)
             i += 1
 cap.release()
 # Closes all the frames

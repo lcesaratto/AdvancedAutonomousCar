@@ -10,6 +10,7 @@ while cap.isOpened():
     ret, frameOriginal = cap.read()
     if ret:
         #Defino parametros HSV para detectar color rojo 
+        frameCamara = copy.deepcopy(frameOriginal)
         frame = copy.deepcopy(frameOriginal)
         lower_red = np.array([0, 10, 40])
         upper_red = np.array([10, 100, 100])
@@ -31,7 +32,8 @@ while cap.isOpened():
         if key == ord('s') or key == ord('S'):
             continue
         if key == ord('c') or key == ord('C'):
-            cv2.imwrite("sendaRoja"+str(i)+".jpg", mask_red)
+            cv2.imwrite("NsendaRoja"+str(i)+".jpg", mask_red)
+            cv2.imwrite("NsendaRojaOriginal"+str(i)+".jpg", frameCamara)
             i += 1
 cap.release()
 # Closes all the frames

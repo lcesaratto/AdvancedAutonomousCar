@@ -12,6 +12,7 @@ i = 1
 while cap.isOpened():
     ret, frame = cap.read()
     if ret:
+        frameCamara = deepcopy(frame)
         frameOriginal = deepcopy(frame)
         lower_green = np.array([40, int(20*1.8), 100])
         upper_green = np.array([80, 230, 140])
@@ -115,7 +116,8 @@ while cap.isOpened():
         if key == ord('s') or key == ord('S'):
             continue
         if key == ord('c') or key == ord('C'):
-            cv2.imwrite("probandoBocacalle"+str(i)+".jpg", frameOriginal)
+            cv2.imwrite("NprobandoBocacalle"+str(i)+".jpg", frameOriginal)
+            cv2.imwrite("NprobandoBocacalleOriginal"+str(i)+".jpg", frameCamara)
             i += 1
         # if key == ord('c') or key == ord('C'):
         #     print('cantidad de puntos arriba:', len(x_up_left))
