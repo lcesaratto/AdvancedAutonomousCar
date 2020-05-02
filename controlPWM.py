@@ -21,6 +21,7 @@ def procesoAuxiliar(recibir1):
 			self.pwm = self._iniciarPWM()
 			self.ordenDada = 'none'
 			self.seDioOrdenConPrioridad = False
+			# self.soloOrdenesPrioritariasPermitidas = False
 
 		def _iniciarPWM(self):
 			# Initialise the PCA9685 using the default address (0x40).
@@ -63,7 +64,14 @@ def procesoAuxiliar(recibir1):
 				if orden == 'exit':
 					self._stop()
 					sys.exit()
-				elif orden == 'stopAndIgnore':
+				# elif orden == 'habilitarOrdenesPrioritarias':
+				# 	self._stop()
+				# 	self.soloOrdenesPrioritariasPermitidas = True
+				# elif orden == 'deshabilitarOrdenesPrioritarias':
+				# 	self._stop()
+				# 	self.soloOrdenesPrioritariasPermitidas = False
+				# 	self._delayPersonalizado(5)
+				elif orden == 'stopAndIgnore5s':
 					self._stop()
 					self._delayPersonalizado(5)
 					# time.sleep(5)
@@ -72,6 +80,12 @@ def procesoAuxiliar(recibir1):
 				elif orden == 'stop':
 					self._stop()
 					self._delayPersonalizado(0.4)
+				elif orden == 'forward0.5s':
+					self._forward()
+					self._delayPersonalizado(0.5)
+					# time.sleep(0.2)
+					self._stop()
+					self._delayPersonalizado(0.04)
 				elif orden == 'forward':
 					self._forward()
 					self._delayPersonalizado(0.15)

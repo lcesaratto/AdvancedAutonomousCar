@@ -29,7 +29,8 @@ while cap.isOpened():
         if key == ord('q') or key == ord('Q'):
             break
         if key == ord('c'):
-            cv2.imwrite('sendaroja.jpg', frame)
+            # cv2.imwrite('sendaroja.jpg', frame)
+            print(mediana_y)
             print(len(np.where(mask_red == 255)[0]))
 cap.release()
 # Closes all the frames

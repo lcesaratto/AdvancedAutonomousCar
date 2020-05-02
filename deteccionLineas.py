@@ -94,6 +94,8 @@ def procesoPrincipal(enviar1):
             self.paseElSemaforo = False
 
             self.buscandoParadaEnDeposito = False
+
+            self.buscandoParadaEnInicio = False
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -155,20 +157,20 @@ def procesoPrincipal(enviar1):
                         self.depositoHallado = 'null'
                         # enviar1.send('stopAndIgnore')
                         self.buscandoParadaEnDeposito = True
-                        Thread(target=self._detectarRojoEnDeposito, args=()).start()
+                        Thread(target=self._hiloDetectarRojoEnDeposito, args=()).start()
                         self.listoParaReiniciar = True
+                        # self.buscandoRojoEnDeposito = True
+
                 elif len(qr_encontrado) == 1:
                     if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
                         print("inicio hallado")
-                        enviar1.send('stopAndIgnore')
+                        self.buscandoParadaEnInicio = True
+                        Thread(target=self._hiloDetectarRojoEnInicio, args=()).start()
                         self.listoParaReiniciar = False
-                        self.tiempoDeEsperaInicial = -1
-                        self.depositoABuscar = -1
-                        self.paseElSemaforo = False
 
         def _detectarRojo(self,frame):  
             #Defino parametros HSV para detectar color rojo
-            if self.buscandoParadaEnDeposito:
+            if self.buscandoParadaEnDeposito or self.buscandoParadaEnInicio:
                 return False
 
             lower_red = np.array([0, 10, 40])
@@ -193,7 +195,56 @@ def procesoPrincipal(enviar1):
             else:
                 return False
 
-        def _detectarRojoEnDeposito(self):
+        def _hiloDetectarRojoEnInicio(self):
+            while True:
+                if not self.buscandoParadaEnDeposito:
+                    frame = copy.deepcopy(self.frameCompleto)
+
+                    lower_red = np.array([0, 10, 40])
+                    upper_red = np.array([10, 100, 100])
+                    #Aplico filtro de color con los parametros ya definidos
+                    hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+                    mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
+
+                    y, x = np.where(mask_red == 255)
+                    if len(x) == 0:
+                        continue
+                    mediana_y = int(statistics.median_low(y))
+
+                    if (280 < mediana_y) and (len(x)>200):
+                        # return True
+                        self.esperarHastaObjetoDetectado = True
+                        enviar1.send('stopPrioritario')
+                        break
+
+            # print('SALIENDO DEL LOOP')
+            time.sleep(1)
+            # endereza
+            while True:
+                distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
+                if abs(distancia_al_centro) != 320:
+                    if distancia_al_centro > 50:
+                        enviar1.send('giroEnElLugarIzq')
+                        # print('1')
+                    elif distancia_al_centro < -50:
+                        enviar1.send('giroEnElLugarDer')
+                        # print('2')
+                    else:
+                        break
+            time.sleep(1)
+            #avance a ciegas
+            enviar1.send('forward0.5s')
+            time.sleep(1)
+            # enviar1.send('deshabilitarOrdenesPrioritarias')
+            self.tiempoDeEsperaInicial = -1
+            self.depositoABuscar = -1
+            self.esperarHastaObjetoDetectado = False
+            # time.sleep(5)
+            self.buscandoParadaEnInicio = False
+            # enviar1.send('stopAndIgnore5s')
+            self.paseElSemaforo = False
+
+        def _hiloDetectarRojoEnDeposito(self):
             if self.buscandoParadaEnDeposito:
                 while True:
                     frame = copy.deepcopy(self.frameCompleto)
@@ -216,12 +267,31 @@ def procesoPrincipal(enviar1):
                     # print('VALORES: ',len(x), mediana_y)
 
                     # if len(x) > 1000:
-                    if (280 < mediana_y) and (len(x)>300):
+                    if (280 < mediana_y) and (len(x)>200):
                         # return True
-                        enviar1.send('stopAndIgnore')
+                        self.esperarHastaObjetoDetectado = True
+                        enviar1.send('stopPrioritario')
                         break
 
                 # print('SALIENDO DEL LOOP')
+                time.sleep(1)
+                # endereza
+                while True:
+                    distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
+                    if abs(distancia_al_centro) != 320:
+                        if distancia_al_centro > 50:
+                            enviar1.send('giroEnElLugarIzq')
+                        elif distancia_al_centro < -50:
+                            enviar1.send('giroEnElLugarDer')
+                        else:
+                            break
+                time.sleep(1)
+                #avance a ciegas
+                enviar1.send('forward0.5s')
+                time.sleep(5)
+                # enviar1.send('deshabilitarOrdenesPrioritarias')
+                # self.buscandoRojoEnDeposito = False
+                self.esperarHastaObjetoDetectado = False
                 time.sleep(10)
                 self.buscandoParadaEnDeposito = False
 
@@ -347,7 +417,7 @@ def procesoPrincipal(enviar1):
             # #     real_m = 160/(((160-b)/m)+b/m)
             # #     print(real_m)
 
-            cv2.line(mask_green,(self.ubicacion_punto_verde,0),(self.ubicacion_punto_verde,480),(255,255,255), 2)
+            # cv2.line(mask_green,(self.ubicacion_punto_verde,0),(self.ubicacion_punto_verde,480),(255,255,255), 2)
             # cv2.imshow('FiltroVerde', mask_green)
         
         def _tomarDecisionMovimiento(self):
@@ -380,10 +450,10 @@ def procesoPrincipal(enviar1):
                 distancia_al_centro_inferior = (self.width/2) - self.ubicacion_punto_verde
                 if abs(distancia_al_centro_inferior) < 100:
                     self.contandoFramesCruzando += 1
-                    print('frames cruzando:', self.contandoFramesCruzando)
+                    # print('frames cruzando:', self.contandoFramesCruzando)
                 if self.contandoFramesCruzando >= 5:
                     self.siguiendoLineaSuperior = False
-                    print('//////////////////////////////////////// LIMPIANDO FLAG')
+                    # print('//////////////////////////////////////// LIMPIANDO FLAG')
                     distancia_al_centro = distancia_al_centro_inferior
                 else:
                     # print('viendo arriba, cuenta: ', self.contandoFramesCruzando)
@@ -464,7 +534,7 @@ def procesoPrincipal(enviar1):
         def _hiloParaCruzarBocacalle(self):
             #Obtiene ubicacion del punto
             tiempoParaCruzarInicial = time.time()
-            print('lanzando hilo')
+            # print('lanzando hilo')
             contandoFramesParado = 0
             contandoFramesBackward = 0
 
@@ -522,7 +592,7 @@ def procesoPrincipal(enviar1):
                         enviar1.send('giroBruDer')
                     else:
                         enviar1.send('forward')
-            print('fin hilo')
+            # print('fin hilo')
 
         def _buscarDeposito(self):
             self._buscar_qr(self.frameCompleto)
