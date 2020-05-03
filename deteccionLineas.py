@@ -96,6 +96,8 @@ def procesoPrincipal(enviar1):
             self.buscandoParadaEnDeposito = False
 
             self.buscandoParadaEnInicio = False
+
+            self.arrayParametrosX = [0,0]
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -211,7 +213,7 @@ def procesoPrincipal(enviar1):
                         continue
                     mediana_y = int(statistics.median_low(y))
 
-                    if (280 < mediana_y) and (len(x)>200):
+                    if (240 < mediana_y) and (len(x)>200):
                         # return True
                         self.esperarHastaObjetoDetectado = True
                         enviar1.send('stopPrioritario')
@@ -233,7 +235,8 @@ def procesoPrincipal(enviar1):
                         break
             time.sleep(1)
             #avance a ciegas
-            enviar1.send('forward0.5s')
+            segundos = round(-0.00286 * mediana_y + 1,84, 1)
+            enviar1.send(('forwardPersonalizado_'+ str(segundos)))
             time.sleep(1)
             # enviar1.send('deshabilitarOrdenesPrioritarias')
             self.tiempoDeEsperaInicial = -1
@@ -254,20 +257,13 @@ def procesoPrincipal(enviar1):
                     #Aplico filtro de color con los parametros ya definidos
                     hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
                     mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
-                    # y, x = np.where(mask_red == 255)
-                    # yindice = np.where(abs(y-280) < 280*0.3)
-                    #Proceso
-                    # if len(x[yindice]) > 700:
 
                     y, x = np.where(mask_red == 255)
                     if len(x) == 0:
                         continue
                     mediana_y = int(statistics.median_low(y))
-                    # print(self.mediana_y)
-                    # print('VALORES: ',len(x), mediana_y)
 
-                    # if len(x) > 1000:
-                    if (280 < mediana_y) and (len(x)>200):
+                    if (240 < mediana_y) and (len(x)>200):
                         # return True
                         self.esperarHastaObjetoDetectado = True
                         enviar1.send('stopPrioritario')
@@ -277,22 +273,35 @@ def procesoPrincipal(enviar1):
                 time.sleep(1)
                 # endereza
                 while True:
-                    distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-                    if abs(distancia_al_centro) != 320:
-                        if distancia_al_centro > 50:
-                            enviar1.send('giroEnElLugarIzq')
-                        elif distancia_al_centro < -50:
-                            enviar1.send('giroEnElLugarDer')
-                        else:
-                            break
+                    [m, b] = self.arrayParametrosX
+                    print(m,b)
+                    time.sleep(0.1)
+                    m_real = 480/( (-b/m) - ((480-b)/m) )
+                    print(m_real)
+                    # if m_real > 0.5:
+                    #     enviar1.send('giroEnElLugarIzq')
+                    # elif m_real < 0.5:
+                    #     enviar1.send('giroEnElLugarDer')
+                    # else:
+                    #     break
+
+                    # distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
+                    # if abs(distancia_al_centro) != 320:
+                    #     if distancia_al_centro > 50:
+                    #         enviar1.send('giroEnElLugarIzq')
+                    #     elif distancia_al_centro < -50:
+                    #         enviar1.send('giroEnElLugarDer')
+                    #     else:
+                    #         break
                 time.sleep(1)
                 #avance a ciegas
-                enviar1.send('forward0.5s')
+                segundos = round(-0.00286 * mediana_y + 1,84, 1)
+                enviar1.send(('forwardPersonalizado_'+ str(segundos)))
                 time.sleep(5)
                 # enviar1.send('deshabilitarOrdenesPrioritarias')
                 # self.buscandoRojoEnDeposito = False
                 self.esperarHastaObjetoDetectado = False
-                time.sleep(10)
+                time.sleep(5)
                 self.buscandoParadaEnDeposito = False
 
         def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
@@ -404,9 +413,11 @@ def procesoPrincipal(enviar1):
             x_mid_int=int(round(x_mid))
             self.ubicacion_punto_verde = x_mid_int
             # print(self.ubicacion_punto_verde)
-            # distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-            # if x.size > 50 and distancia_al_centro < 320:    
-            #     m,b = np.polyfit(x,y,1)
+            distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
+            if x.size > 50 and distancia_al_centro < 320:    
+                m,b = np.polyfit(x,y,1)
+                self.arrayParametrosX = [m,b]
+            
             #     print('pendiente:',m)
             #     if m < 0:
             #         self.girandoHaciaDerecha = True

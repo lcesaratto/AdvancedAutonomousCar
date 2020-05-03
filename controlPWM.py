@@ -86,6 +86,12 @@ def procesoAuxiliar(recibir1):
 					# time.sleep(0.2)
 					self._stop()
 					self._delayPersonalizado(0.04)
+				elif 'forwardPersonalizado_' in orden:
+					self._forward()
+					self._delayPersonalizado((int(orden[21])+int(orden[23])/10))
+					# time.sleep(0.2)
+					self._stop()
+					self._delayPersonalizado(0.04)
 				elif orden == 'forward':
 					self._forward()
 					self._delayPersonalizado(0.15)
