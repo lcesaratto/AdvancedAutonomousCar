@@ -276,14 +276,17 @@ def procesoPrincipal(enviar1):
                     [m, b] = self.arrayParametrosX
                     print(m,b)
                     time.sleep(0.1)
-                    m_real = 480/( (-b/m) - ((480-b)/m) )
-                    print(m_real)
-                    # if m_real > 0.5:
-                    #     enviar1.send('giroEnElLugarIzq')
-                    # elif m_real < 0.5:
-                    #     enviar1.send('giroEnElLugarDer')
-                    # else:
-                    #     break
+                    m2 = 1/m
+                    b2 = -b/m
+                    print(m2,b2)
+                    # m_real = 480/( (-b/m) - ((480-b)/m) )
+                    # print(m_real)
+                    if m > 0.5:
+                        enviar1.send('giroEnElLugarIzq')
+                    elif m < -0.5:
+                        enviar1.send('giroEnElLugarDer')
+                    else:
+                        break
 
                     # distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
                     # if abs(distancia_al_centro) != 320:
@@ -414,8 +417,9 @@ def procesoPrincipal(enviar1):
             self.ubicacion_punto_verde = x_mid_int
             # print(self.ubicacion_punto_verde)
             distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-            if x.size > 50 and distancia_al_centro < 320:    
-                m,b = np.polyfit(x,y,1)
+            if x.size > 50 and distancia_al_centro < 320:
+                y += 320
+                m,b = np.polyfit(y,x,1)
                 self.arrayParametrosX = [m,b]
             
             #     print('pendiente:',m)
