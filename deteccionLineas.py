@@ -222,20 +222,41 @@ def procesoPrincipal(enviar1):
             # print('SALIENDO DEL LOOP')
             time.sleep(1)
             # endereza
+            ultimo_m_recibido = 0
             while True:
-                distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-                if abs(distancia_al_centro) != 320:
-                    if distancia_al_centro > 50:
+                [m, b] = self.arrayParametrosX
+                if m == ultimo_m_recibido:
+                    continue
+                else:
+                    ultimo_m_recibido = m
+                    print('///////////////// ',m,b)
+                # time.sleep(0.1)
+                # m2 = 1/m
+                # b2 = -b/m
+                # print(m2,b2)
+                # m_real = 480/( (-b/m) - ((480-b)/m) )
+                # print(m_real)
+                if m != 100:
+                    if m > 0.05:
                         enviar1.send('giroEnElLugarIzq')
-                        # print('1')
-                    elif distancia_al_centro < -50:
+                    elif m < -0.05:
                         enviar1.send('giroEnElLugarDer')
-                        # print('2')
                     else:
+                        print('saliendo con m: ', m)
                         break
+                # distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
+                # if abs(distancia_al_centro) != 320:
+                #     if distancia_al_centro > 50:
+                #         enviar1.send('giroEnElLugarIzq')
+                #         # print('1')
+                #     elif distancia_al_centro < -50:
+                #         enviar1.send('giroEnElLugarDer')
+                #         # print('2')
+                #     else:
+                #         break
             time.sleep(1)
             #avance a ciegas
-            segundos = round(-0.00286 * mediana_y + 1,84, 1)
+            segundos = round(-0.00286 * mediana_y + 1.84, 1)
             enviar1.send(('forwardPersonalizado_'+ str(segundos)))
             time.sleep(1)
             # enviar1.send('deshabilitarOrdenesPrioritarias')
@@ -272,21 +293,30 @@ def procesoPrincipal(enviar1):
                 # print('SALIENDO DEL LOOP')
                 time.sleep(1)
                 # endereza
+                ultimo_m_recibido = 0
                 while True:
                     [m, b] = self.arrayParametrosX
-                    print(m,b)
-                    time.sleep(0.1)
-                    m2 = 1/m
-                    b2 = -b/m
-                    print(m2,b2)
+                    if m == ultimo_m_recibido:
+                        continue
+                    else:
+                        ultimo_m_recibido = m
+                        print('///////////////// ',m,b)
+                    # time.sleep(0.1)
+                    # m2 = 1/m
+                    # b2 = -b/m
+                    # print(m2,b2)
                     # m_real = 480/( (-b/m) - ((480-b)/m) )
                     # print(m_real)
-                    if m > 0.5:
-                        enviar1.send('giroEnElLugarIzq')
-                    elif m < -0.5:
-                        enviar1.send('giroEnElLugarDer')
-                    else:
-                        break
+                    if m != 100:
+                        if m > 0.05:
+                            enviar1.send('giroEnElLugarIzq')
+                            time.sleep(5)
+                        elif m < -0.05:
+                            enviar1.send('giroEnElLugarDer')
+                            time.sleep(5)
+                        else:
+                            print('saliendo con m: ', m)
+                            break
 
                     # distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
                     # if abs(distancia_al_centro) != 320:
@@ -298,7 +328,7 @@ def procesoPrincipal(enviar1):
                     #         break
                 time.sleep(1)
                 #avance a ciegas
-                segundos = round(-0.00286 * mediana_y + 1,84, 1)
+                segundos = round(-0.00286 * mediana_y + 1.84, 1)
                 enviar1.send(('forwardPersonalizado_'+ str(segundos)))
                 time.sleep(5)
                 # enviar1.send('deshabilitarOrdenesPrioritarias')
@@ -417,10 +447,13 @@ def procesoPrincipal(enviar1):
             self.ubicacion_punto_verde = x_mid_int
             # print(self.ubicacion_punto_verde)
             distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-            if x.size > 50 and distancia_al_centro < 320:
+            if x.size > 500 and distancia_al_centro < 320:
                 y += 320
                 m,b = np.polyfit(y,x,1)
+                
                 self.arrayParametrosX = [m,b]
+            else:
+                self.arrayParametrosX = [100,100]
             
             #     print('pendiente:',m)
             #     if m < 0:
