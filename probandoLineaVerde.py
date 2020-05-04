@@ -34,7 +34,7 @@ while cap.isOpened():
             m,b = np.polyfit(y,x,1)
             m2 = 1/m
             b2 = -b/m
-            print('la pendiente es: ', m)
+            print('la pendiente es: ', m, 'y la posicion en x: ', x_mid)
         
         # cv2.line(mask_green,(ubicacion_punto_verde,0),(ubicacion_punto_verde,480),(255,255,255), 2)
 
@@ -50,7 +50,7 @@ while cap.isOpened():
         
         cv2.imshow('imagen', frameCamara)
         # cv2.imshow('original', frameCamara)
-        key = cv2.waitKey(1000)
+        key = cv2.waitKey(100)
         if key == ord('q') or key == ord('Q'):
             break
         if key == ord('s') or key == ord('S'):
