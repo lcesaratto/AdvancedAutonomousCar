@@ -338,7 +338,7 @@ def procesoPrincipal(enviar1):
                 time.sleep(5)
                 self.buscandoParadaEnDeposito = False
 
-        def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
+        def _buscarObjetos (self, frame, mostrarResultado=True, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
             if calcularFPS:
                 tiempo_inicial = time.time()
             
@@ -396,10 +396,10 @@ def procesoPrincipal(enviar1):
                         color = self.colors[2] #indice va de 0 a 3 para 4 clases
                     elif label == 'CartelCero':
                         color = self.colors[3] #indice va de 0 a 3 para 4 clases
-                    cv2.rectangle(frameMostrado, (x, y), (x + w, y + h), color, 2)
+                    cv2.rectangle(self.frameCompleto, (x, y), (x + w, y + h), color, 2)
                     cv2.putText(frameMostrado, label, (x, y + 30), self.font, 3, color, 2)
 
-                cv2.imshow('buscandoObjetos',frameMostrado)
+                # cv2.imshow('buscandoObjetos',frameMostrado)
                 
             if not retornarBoxes and not retornarConfidence:
                 return class_ids
@@ -897,6 +897,7 @@ def procesoPrincipal(enviar1):
 
                         # Display the resulting frame
                         cv2.imshow('frameCompleto', self.frameCompleto)
+                        out.write(self.frameCompleto)
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
                         if key == ord('q') or key == ord('Q'):
@@ -911,7 +912,7 @@ def procesoPrincipal(enviar1):
 
             # When everything done, release the video capture object
             self.cap.release()
-            # out.release()
+            out.release()
             # out2.release()
             # Closes all the frames
             cv2.destroyAllWindows()
@@ -922,7 +923,7 @@ def procesoPrincipal(enviar1):
 
 
 if __name__ == "__main__":
-    # out = cv2.VideoWriter('outputGirandoPistaUnoOpt2.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
+    out = cv2.VideoWriter('mostrandoDeteccionObjetos.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
     # out2 = cv2.VideoWriter('outputGirandoPistaUnoOpt3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,160))
     # out = cv2.VideoWriter('video_de_prueba.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 20, (640,480))
 
