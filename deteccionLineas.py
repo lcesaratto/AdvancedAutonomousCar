@@ -296,17 +296,18 @@ def procesoPrincipal(enviar1):
                 ultimo_m_recibido = 0
                 while True:
                     [m, b] = self.arrayParametrosX
+                    # print('recibio',m,b)
                     if m == ultimo_m_recibido:
                         continue
                     else:
                         ultimo_m_recibido = m
-                        print('///////////////// ',m,b)
-                    # time.sleep(0.1)
-                    # m2 = 1/m
-                    # b2 = -b/m
-                    # print(m2,b2)
-                    # m_real = 480/( (-b/m) - ((480-b)/m) )
-                    # print(m_real)
+                        print('recibi///////////////// ',m,b)
+                    # # time.sleep(0.1)
+                    # # m2 = 1/m
+                    # # b2 = -b/m
+                    # # print(m2,b2)
+                    # # m_real = 480/( (-b/m) - ((480-b)/m) )
+                    # # print(m_real)
                     if m != 100:
                         if m > 0.05:
                             enviar1.send('giroEnElLugarIzq')
@@ -316,7 +317,7 @@ def procesoPrincipal(enviar1):
                             time.sleep(5)
                         else:
                             print('saliendo con m: ', m)
-                            break
+                            # break
 
                     # distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
                     # if abs(distancia_al_centro) != 320:
@@ -450,10 +451,15 @@ def procesoPrincipal(enviar1):
             if x.size > 500 and distancia_al_centro < 320:
                 y += 320
                 m,b = np.polyfit(y,x,1)
-                
+                print('envio', m,b )
+                m2 = 1/m
+                b2 = -b/m
+                cv2.line(self.frameCompleto, (int((320-b2)/m2),320), (int((480-b2)/m2),480),(255,0,0), 3)
+
                 self.arrayParametrosX = [m,b]
             else:
                 self.arrayParametrosX = [100,100]
+
             
             #     print('pendiente:',m)
             #     if m < 0:
@@ -890,7 +896,7 @@ def procesoPrincipal(enviar1):
                         Thread(target=self._buscarDeposito, args=()).start()
 
                         # Display the resulting frame
-                        cv2.imshow('frameCompleto', self.frameCompleto[0][0])
+                        cv2.imshow('frameCompleto', self.frameCompleto)
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
                         if key == ord('q') or key == ord('Q'):

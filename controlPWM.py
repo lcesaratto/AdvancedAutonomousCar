@@ -130,7 +130,7 @@ def procesoAuxiliar(recibir1):
 					self._delayPersonalizado(0.04)
 				elif orden == 'giroEnElLugarIzq':
 					self._giroIzquierdaEnElLugar()
-					time.sleep(0.15)
+					time.sleep(0.05)
 					# time.sleep(0.1)
 					self._stop()
 					self._delayPersonalizado(0.04)
