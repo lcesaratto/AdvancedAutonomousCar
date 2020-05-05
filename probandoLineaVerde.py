@@ -44,13 +44,13 @@ while cap.isOpened():
             x_ab = m*480+b
 
             m_tabla = x_ab*m_corr+b_corr
-            if (0.85*abs(m_tabla) < abs(m) < 1.15*abs(m_tabla)):
+            if ( (m_tabla-0.1) < m < (m_tabla+0.1) ):
                 m2 = 1/m
                 b2 = -b/m
                 cv2.line(frameCamara, (int((320-b2)/m2),320), (int((480-b2)/m2),480), (255,0,0), 4)
                 print('OK')
             else:
-                if m < 0:
+                if m < m_tabla:
                     print("GIRAR A LA DERECHA")
                 else:
                     print("GIRAR A LA IZQUIERDA")
