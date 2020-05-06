@@ -20,6 +20,7 @@ def procesoPrincipal(enviar1):
             self.cap = self._abrirCamara()
             self.fps, self.width, self.height = self._obtenerParametrosFrame()
             # Frame con el que trabajan todos los metodos
+
             self.frameProcesado = []
             self.mask_green = []
             # Especificamos mediante los siguientes array que porciones de frame procesar
@@ -98,6 +99,8 @@ def procesoPrincipal(enviar1):
             self.buscandoParadaEnInicio = False
 
             self.arrayParametrosX = [0,0]
+
+            self.m_corr, self.b_corr = self._cargarFactoresAlineacion()
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -120,6 +123,12 @@ def procesoPrincipal(enviar1):
             with open("4classes.names", "r") as f:
                 classes = [line.strip() for line in f.readlines()]
             return classes
+
+        def _cargarFactoresAlineacion(self):
+            y_corr = np.loadtxt('data/m_vista1.out')
+            x_corr = np.loadtxt('data/x_abajo1.out')
+            m_corr,b_corr = np.polyfit(x_corr,y_corr,1)
+            return m_corr, b_corr
 
         def _obtenerLuminosidadAmbiente(self, frame, minLum=120, maxLum=160, minMul=2, maxMul=3):
             lower = np.array([100, 100, 100])
@@ -229,31 +238,19 @@ def procesoPrincipal(enviar1):
                     continue
                 else:
                     ultimo_m_recibido = m
-                    print('///////////////// ',m,b)
-                # time.sleep(0.1)
-                # m2 = 1/m
-                # b2 = -b/m
-                # print(m2,b2)
-                # m_real = 480/( (-b/m) - ((480-b)/m) )
-                # print(m_real)
                 if m != 100:
-                    if m > 0.05:
-                        enviar1.send('giroEnElLugarIzq')
-                    elif m < -0.05:
-                        enviar1.send('giroEnElLugarDer')
-                    else:
-                        print('saliendo con m: ', m)
+                    x_ab = m*480+b
+                    m_tabla = x_ab*self.m_corr+self.b_corr
+                    if ( (m_tabla-0.1) < m < (m_tabla+0.1) ):
+                        print('OK')
                         break
-                # distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-                # if abs(distancia_al_centro) != 320:
-                #     if distancia_al_centro > 50:
-                #         enviar1.send('giroEnElLugarIzq')
-                #         # print('1')
-                #     elif distancia_al_centro < -50:
-                #         enviar1.send('giroEnElLugarDer')
-                #         # print('2')
-                #     else:
-                #         break
+                    else:
+                        if m < m_tabla:
+                            print("GIRAR A LA DERECHA")
+                            enviar1.send('giroEnElLugarDer')
+                        else:
+                            print("GIRAR A LA IZQUIERDA")
+                            enviar1.send('giroEnElLugarIzq')
             time.sleep(1)
             #avance a ciegas
             segundos = round(-0.00286 * mediana_y + 1.84, 1)
@@ -296,37 +293,24 @@ def procesoPrincipal(enviar1):
                 ultimo_m_recibido = 0
                 while True:
                     [m, b] = self.arrayParametrosX
-                    # print('recibio',m,b)
                     if m == ultimo_m_recibido:
                         continue
                     else:
                         ultimo_m_recibido = m
-                        print('recibi///////////////// ',m,b)
-                    # # time.sleep(0.1)
-                    # # m2 = 1/m
-                    # # b2 = -b/m
-                    # # print(m2,b2)
-                    # # m_real = 480/( (-b/m) - ((480-b)/m) )
-                    # # print(m_real)
                     if m != 100:
-                        if m > 0.05:
-                            enviar1.send('giroEnElLugarIzq')
-                            time.sleep(5)
-                        elif m < -0.05:
-                            enviar1.send('giroEnElLugarDer')
-                            time.sleep(5)
+                        x_ab = m*480+b
+                        m_tabla = x_ab*self.m_corr+self.b_corr
+                        if ( (m_tabla-0.1) < m < (m_tabla+0.1) ):
+                            print('OK')
+                            break
                         else:
-                            print('saliendo con m: ', m)
-                            # break
+                            if m < m_tabla:
+                                print("GIRAR A LA DERECHA")
+                                enviar1.send('giroEnElLugarDer')
+                            else:
+                                print("GIRAR A LA IZQUIERDA")
+                                enviar1.send('giroEnElLugarIzq')
 
-                    # distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-                    # if abs(distancia_al_centro) != 320:
-                    #     if distancia_al_centro > 50:
-                    #         enviar1.send('giroEnElLugarIzq')
-                    #     elif distancia_al_centro < -50:
-                    #         enviar1.send('giroEnElLugarDer')
-                    #     else:
-                    #         break
                 time.sleep(1)
                 #avance a ciegas
                 segundos = round(-0.00286 * mediana_y + 1.84, 1)
@@ -450,10 +434,10 @@ def procesoPrincipal(enviar1):
             self.ubicacion_punto_verde = x_mid_int
             # print(self.ubicacion_punto_verde)
             distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-            if x.size > 500 and distancia_al_centro < 320:
+            if x.size > 50 and distancia_al_centro < 320:
                 y += 320
                 m,b = np.polyfit(y,x,1)
-                print('envio', m,b )
+                # print('envio', m,b )
                 m2 = 1/m
                 b2 = -b/m
                 cv2.line(self.frameCompleto, (int((320-b2)/m2),320), (int((480-b2)/m2),480),(255,0,0), 3)
