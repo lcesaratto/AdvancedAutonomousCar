@@ -222,7 +222,7 @@ def procesoPrincipal(enviar1):
                         continue
                     mediana_y = int(statistics.median_low(y))
 
-                    if (240 < mediana_y) and (len(x)>200):
+                    if (200 < mediana_y) and (len(x)>100):
                         # return True
                         self.esperarHastaObjetoDetectado = True
                         enviar1.send('stopPrioritario')
@@ -248,12 +248,26 @@ def procesoPrincipal(enviar1):
                         if m < m_tabla:
                             print("GIRAR A LA DERECHA")
                             enviar1.send('giroEnElLugarDer')
+                            time.sleep(0.5)
                         else:
                             print("GIRAR A LA IZQUIERDA")
                             enviar1.send('giroEnElLugarIzq')
+                            time.sleep(0.5)
             time.sleep(1)
             #avance a ciegas
-            segundos = round(-0.00286 * mediana_y + 1.84, 1)
+            try:
+                frame = copy.deepcopy(self.frameCompleto)
+                lower_red = np.array([0, 10, 40])
+                upper_red = np.array([10, 100, 100])
+                #Aplico filtro de color con los parametros ya definidos
+                hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+                mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
+                y, x = np.where(mask_red == 255)
+                mediana_y = int(statistics.median_low(y))
+                segundos = round(-0.00286 * mediana_y + 1.84, 1)
+            except:
+                print('PERDIO LA LINEA ROJA EN INICIO')
+                segundos = 0.2
             enviar1.send(('forwardPersonalizado_'+ str(segundos)))
             time.sleep(1)
             # enviar1.send('deshabilitarOrdenesPrioritarias')
@@ -281,7 +295,7 @@ def procesoPrincipal(enviar1):
                         continue
                     mediana_y = int(statistics.median_low(y))
 
-                    if (240 < mediana_y) and (len(x)>200):
+                    if (200 < mediana_y) and (len(x)>200):
                         # return True
                         self.esperarHastaObjetoDetectado = True
                         enviar1.send('stopPrioritario')
@@ -307,13 +321,27 @@ def procesoPrincipal(enviar1):
                             if m < m_tabla:
                                 print("GIRAR A LA DERECHA")
                                 enviar1.send('giroEnElLugarDer')
+                                time.sleep(0.5)
                             else:
                                 print("GIRAR A LA IZQUIERDA")
                                 enviar1.send('giroEnElLugarIzq')
+                                time.sleep(0.5)
 
                 time.sleep(1)
                 #avance a ciegas
-                segundos = round(-0.00286 * mediana_y + 1.84, 1)
+                try:
+                    frame = copy.deepcopy(self.frameCompleto)
+                    lower_red = np.array([0, 10, 40])
+                    upper_red = np.array([10, 100, 100])
+                    #Aplico filtro de color con los parametros ya definidos
+                    hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+                    mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
+                    y, x = np.where(mask_red == 255)
+                    mediana_y = int(statistics.median_low(y))
+                    segundos = round(-0.00286 * mediana_y + 1.84, 1)
+                except:
+                    print('PERDIO LA LINEA ROJA EN DEPOSITO')
+                    segundos = 0.2
                 enviar1.send(('forwardPersonalizado_'+ str(segundos)))
                 time.sleep(5)
                 # enviar1.send('deshabilitarOrdenesPrioritarias')
