@@ -14,6 +14,8 @@ def procesoPrincipal(enviar1):
 
     class VehiculoAutonomo (object):
         def __init__(self):
+            self.estoyDetectandoObjetos = False
+            self.mandeOrdenParaAvanzar = False
             self.contandoFramesGonzalo = 0
             self.frameCompleto = []
             self.girandoHaciaDerecha = False
@@ -291,6 +293,9 @@ def procesoPrincipal(enviar1):
             self.paseElSemaforo = False
 
         def _hiloDetectarRojoEnDeposito(self):
+            
+
+            
             if self.buscandoParadaEnDeposito:
                 while True:
                     frame = copy.deepcopy(self.frameCompleto)
@@ -313,6 +318,52 @@ def procesoPrincipal(enviar1):
                         break
 
                 time.sleep(1)
+
+                # #Avanzar
+                # try:
+                #     frame = copy.deepcopy(self.frameCompleto)
+                #     lower_red = np.array([0, 10, 40])
+                #     upper_red = np.array([10, 100, 100])
+                #     #Aplico filtro de color con los parametros ya definidos
+                #     hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+                #     mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
+                #     y, x = np.where(mask_red == 255)
+                #     mediana_y = int(statistics.median_low(y)+100)
+                #     segundos = round(-0.00286 * mediana_y + 1.84, 1)
+                # except:
+                #     print('PERDIO LA LINEA ROJA EN DEPOSITO')
+                #     segundos = 0.2
+                # tiempo_inicial = time.time()
+                # while (time.time()-tiempo_inicial) < segundos:
+                #     self._moverVehiculoEnLineaVerde()
+
+                # # endereza
+                # ultimo_m_recibido = 0
+                # while True:
+                #     [m, b] = self.arrayParametrosX
+                #     if m == ultimo_m_recibido:
+                #         continue
+                #     else:
+                #         ultimo_m_recibido = m
+                #     if m != 100:
+                #         x_ab = m*480+b
+                #         m_tabla = x_ab*self.m_corr+self.b_corr
+                #         if ( (m_tabla-0.1) < m < (m_tabla+0.1) ):
+                #             print('OK')
+                #             break
+                #         else:
+                #             if m < m_tabla:
+                #                 print("GIRAR A LA DERECHA")
+                #                 enviar1.send('giroEnElLugarDer')
+                #                 time.sleep(0.5)
+                #             else:
+                #                 print("GIRAR A LA IZQUIERDA")
+                #                 enviar1.send('giroEnElLugarIzq')
+                #                 time.sleep(0.5)
+
+                # time.sleep(1)
+
+
                 # endereza
                 ultimo_m_recibido = 0
                 while True:
@@ -358,7 +409,7 @@ def procesoPrincipal(enviar1):
                 time.sleep(5)
                 self.buscandoParadaEnDeposito = False
 
-        def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
+        def _buscarObjetos (self, frame, mostrarResultado=True, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
             if calcularFPS:
                 tiempo_inicial = time.time()
             
@@ -742,16 +793,17 @@ def procesoPrincipal(enviar1):
         
         def _tomarDesicionBasadaDeteccionObjetos(self, frameCompleto):
             # Comenzamos buscando objetos si se detecta la senda peatonal roja
+            self.mandeOrdenParaAvanzar = False
             if not self.cartelDetectado:
                 if self._detectarRojo(frameCompleto): #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
                     #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
                     print('##################### rojo detectado')
                     enviar1.send('stopPrioritario')
-                    self.esperarHastaObjetoDetectado = True
                     # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
-                    
+                    self.esperarHastaObjetoDetectado = True
                     # if self.estoyDistanciaCorrecta:
                     self.contandoFramesDeteccionObjetos += 1
+                    self.estoyDetectandoObjetos = True
                     if self.contandoFramesDeteccionObjetos == 5:
                         self.contandoFramesDeteccionObjetos = 0
                         class_ids = self._buscarObjetos(frameCompleto)
@@ -764,11 +816,13 @@ def procesoPrincipal(enviar1):
                                     if self.contandoFramesEstandoTorcido == 2:
                                         self.contandoFramesEstandoTorcido = 0
                                         enviar1.send('giroEnElLugarDer')
+                                        self.mandeOrdenParaAvanzar = True
                                 elif ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 1):
                                     self.contandoFramesEstandoTorcido += 1
                                     if self.contandoFramesEstandoTorcido == 2:
                                         self.contandoFramesEstandoTorcido = 0
                                         enviar1.send('giroEnElLugarIzq')
+                                        self.mandeOrdenParaAvanzar = True
                                 elif ((0 in class_ids) or (1 in class_ids)) and ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 2):
                                     if (2 in class_ids):
                                         self.contandoFramesEstandoTorcido = 0
@@ -782,6 +836,7 @@ def procesoPrincipal(enviar1):
                                             self.esperarHastaObjetoDetectado = False
                                             self.paseElSemaforo = True
                                             print('##################### cartel uno detectado y semaforo verde')
+                                            self.mandeOrdenParaAvanzar = True
                                     elif (3 in class_ids):
                                         self.contandoFramesEstandoTorcido = 0
                                         self.tiempoInicialLuegoDeDeteccionCartel = time.time()
@@ -794,6 +849,7 @@ def procesoPrincipal(enviar1):
                                             self.esperarHastaObjetoDetectado = False
                                             self.paseElSemaforo = True
                                             print('##################### cartel cero detectado y semaforo verde')
+                                            self.mandeOrdenParaAvanzar = True
                             
                             else:
                                 if (2 in class_ids) and (len(class_ids) == 1):
@@ -807,6 +863,7 @@ def procesoPrincipal(enviar1):
                                         self.depositoHallado = str(2)
                                         self.esperarHastaObjetoDetectado = False
                                         print('##################### cartel uno detectado')
+                                        self.mandeOrdenParaAvanzar = True
                                 elif (3 in class_ids) and (len(class_ids) == 1):
                                     self.contandoFramesEstandoTorcido = 0
                                     self.tiempoInicialLuegoDeDeteccionCartel = time.time()
@@ -818,14 +875,17 @@ def procesoPrincipal(enviar1):
                                         self.depositoHallado = str(1)
                                         self.esperarHastaObjetoDetectado = False
                                         print('##################### cartel cero detectado')
+                                        self.mandeOrdenParaAvanzar = True
 
                         else:
                             self.contandoFramesEstandoTorcido += 1
                             if self.contandoFramesEstandoTorcido == 2:
                                     self.contandoFramesEstandoTorcido = 0
                                     enviar1.send('giroEnElLugarDer')
+                                    self.mandeOrdenParaAvanzar = True
 
             else:
+                self.estoyDetectandoObjetos = False
                 self.contandoFramesEstandoTorcido = 0
                 if not self._detectarRojo(frameCompleto):
                     # Espero 3segundos para borrar la bandera de cartel detectado
@@ -876,9 +936,17 @@ def procesoPrincipal(enviar1):
                         self._tomarDecisionMovimiento()
                         Thread(target=self._buscarDeposito, args=()).start()
                         # Display the resulting frame
+                        if self.estoyDetectandoObjetos:
+                            cv2.putText(self.frameCompleto, 'ROJO', (100,400), self.font, 2, (0,0,255), 3)
+                        else:
+                            cv2.putText(self.frameCompleto, 'NADA', (100,400), self.font, 2, (0,0,255), 3)
+                        if self.mandeOrdenParaAvanzar:
+                            cv2.putText(self.frameCompleto, 'SI', (200,400), self.font, 2, (0,0,255), 3)
+                        else:
+                            cv2.putText(self.frameCompleto, 'NO', (200,400), self.font, 2, (0,0,255), 3)
                         cv2.putText(self.frameCompleto, str(self.contandoFramesGonzalo), (500,400), self.font, 2, (0,0,255), 3)
                         cv2.imshow('frameCompleto', self.frameCompleto)
-                        # out.write(self.frameCompleto)
+                        out.write(self.frameCompleto)
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
                         if key == ord('q') or key == ord('Q'):
@@ -892,7 +960,7 @@ def procesoPrincipal(enviar1):
 
             # When everything done, release the video capture object
             self.cap.release()
-            # out.release()
+            out.release()
             # Closes all the frames
             cv2.destroyAllWindows()
             exit()
@@ -902,7 +970,7 @@ def procesoPrincipal(enviar1):
 
 
 if __name__ == "__main__":
-    # out = cv2.VideoWriter('mostrandoDeteccionObjetos3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
+    out = cv2.VideoWriter('mostrandoDeteccionObjetos05.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
 
     enviar1, recibir1 = Pipe()
     
