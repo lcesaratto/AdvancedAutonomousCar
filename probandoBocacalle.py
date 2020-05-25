@@ -14,7 +14,7 @@ while cap.isOpened():
     if ret:
         frameCamara = deepcopy(frame)
         frameOriginal = deepcopy(frame)
-        lower_green = np.array([40, int(20*1.8), 100])
+        lower_green = np.array([40, int(20*1.5), 100]) # 20*1.8
         upper_green = np.array([80, 230, 140])
         frame = cv2.GaussianBlur(frame, (3, 3), 0)
         hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
@@ -28,8 +28,8 @@ while cap.isOpened():
             m_down = 0
             b_up = 0
             b_down = 0
-            puntos_arriba = 1000
-            puntos_abajo = 1500
+            puntos_arriba = 1500
+            puntos_abajo = 2000
             if i==0:
                 # Chequeo diagonal amarilla
                 upper_left_triangle = np.flipud(np.tril(np.flipud(mask_green), 0)) # Upper triangle of an array
@@ -41,6 +41,7 @@ while cap.isOpened():
                     # diagonal_right = np.eye(480,640,0,bool)
                     suficientesPuntos = True
                 else:
+                    print('//////////////// ARRIBA: ',len(x_up_left),' ABAJO: ', len(x_down_right))
                     continue
                 if x_up_left.size > 50:    
                     m_up,b_up = np.polyfit(x_up_left,y_up_left,1)
