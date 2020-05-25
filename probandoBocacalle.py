@@ -14,7 +14,7 @@ while cap.isOpened():
     if ret:
         frameCamara = deepcopy(frame)
         frameOriginal = deepcopy(frame)
-        lower_green = np.array([40, int(20*1.5), 100]) # 20*1.8
+        lower_green = np.array([40, int(20*1.8), 100]) # 20*1.8
         upper_green = np.array([80, 230, 140])
         frame = cv2.GaussianBlur(frame, (3, 3), 0)
         hsv_green = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
