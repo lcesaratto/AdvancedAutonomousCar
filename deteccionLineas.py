@@ -14,7 +14,7 @@ def procesoPrincipal(enviar1):
 
     class VehiculoAutonomo (object):
         def __init__(self):
-            self.contandoFramesGonzalo = 0
+            # self.contandoFramesGonzalo = 0
             self.frameCompleto = []
             self.girandoHaciaDerecha = False
 
@@ -470,15 +470,15 @@ def procesoPrincipal(enviar1):
             self.ubicacion_punto_verde = x_mid_int
             # print(self.ubicacion_punto_verde)
             distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-            if x.size > 50 and distancia_al_centro < 320:
-                y += 320
-                y_indice = np.where(y>400)
-                x_nuevo = x[y_indice]
-                y_nuevo = y[y_indice]
+            y += 320
+            y_indice = np.where(y>400)
+            x_nuevo = x[y_indice]
+            y_nuevo = y[y_indice]
+            if x_nuevo.size > 50 and distancia_al_centro < 320:
                 m,b = np.polyfit(y_nuevo,x_nuevo,1)
                 m2 = 1/m
                 b2 = -b/m
-                cv2.line(self.frameCompleto, (int((320-b2)/m2),320), (int((480-b2)/m2),480),(255,0,0), 3)
+                #cv2.line(self.frameCompleto, (int((320-b2)/m2),320), (int((480-b2)/m2),480),(255,0,0), 3)
 
                 self.arrayParametrosX = [m,b]
             else:
@@ -851,7 +851,7 @@ def procesoPrincipal(enviar1):
             while self.cap.isOpened():
                 ret, frameCompleto = self.cap.read()
                 if ret:
-                    self.contandoFramesGonzalo += 1
+                    # self.contandoFramesGonzalo += 1
                     self.frameCompleto = frameCompleto
 
                     # Aca corremos la funcion que busca un codigo qr en la imagen para comenzar
@@ -876,8 +876,8 @@ def procesoPrincipal(enviar1):
                         self._tomarDecisionMovimiento()
                         Thread(target=self._buscarDeposito, args=()).start()
                         # Display the resulting frame
-                        cv2.putText(self.frameCompleto, str(self.contandoFramesGonzalo), (500,400), self.font, 2, (0,0,255), 3)
-                        cv2.imshow('frameCompleto', self.frameCompleto)
+                        # cv2.putText(self.frameCompleto, str(self.contandoFramesGonzalo), (500,400), self.font, 2, (0,0,255), 3)
+                        cv2.imshow('frameCompleto', self.frameCompleto[0][0])
                         # out.write(self.frameCompleto)
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
