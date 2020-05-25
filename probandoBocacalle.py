@@ -7,7 +7,7 @@ width = cap.get(cv2.CAP_PROP_FRAME_WIDTH )
 
 # out = cv2.VideoWriter('VideoDeMuestra.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 20, (640,480))
 
-i = 1
+i = 10
 
 while cap.isOpened():
     ret, frame = cap.read()
@@ -28,8 +28,8 @@ while cap.isOpened():
             m_down = 0
             b_up = 0
             b_down = 0
-            puntos_arriba = 1500
-            puntos_abajo = 2000
+            puntos_arriba = 1000
+            puntos_abajo = 1500
             if i==0:
                 # Chequeo diagonal amarilla
                 upper_left_triangle = np.flipud(np.tril(np.flipud(mask_green), 0)) # Upper triangle of an array
@@ -62,7 +62,7 @@ while cap.isOpened():
                 if suficientesPuntos and diagonalNoCruza:
                     print('lala')
                     frameOriginal[:,:,0] =  lower_right_triangle*255 + upper_left_triangle*255 
-                    frameOriginal[:,:,1] =  lower_right_triangle*55 + upper_left_triangle*55+ np.flipud(np.tril(np.flipud(np.ones((480,640),int)), 0))*200 + np.fliplr(np.tril(np.fliplr(np.ones((480,640),int)), -1))*200
+                    frameOriginal[:,:,1] =  lower_right_triangle*55 + upper_left_triangle*55 + np.flipud(np.tril(np.flipud(np.ones((480,640),int)), 0))*200 + np.fliplr(np.tril(np.fliplr(np.ones((480,640),int)), -1))*200
                     frameOriginal[:,:,2] =  lower_right_triangle*55 + upper_left_triangle*55 + np.flipud(np.tril(np.flipud(np.ones((480,640),int)), 0))*200 + np.fliplr(np.tril(np.fliplr(np.ones((480,640),int)), -1))*200
                     cv2.line(frameOriginal,(0,480),(640,0),(0,255,255), 2)
                     cv2.line(frameOriginal,(0,int(b_up)),(int(-b_up/m_up),0),(0,0,255), 2)
@@ -70,6 +70,7 @@ while cap.isOpened():
                     break
 
             else:
+                print('cheqeo espejada')
                 # Chequeo diagonal azul
                 lower_left_triangle = np.tril(mask_green, -1) # Lower triangle of an array
                 upper_right_triangle = np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(mask_green)), 0))) # Upper triangle of an array
@@ -78,7 +79,9 @@ while cap.isOpened():
 
                 if len(x_up_right) > puntos_arriba and len(x_down_left) > puntos_abajo:
                     suficientesPuntos = True
+                    print('primera condicion ok')
                 else:
+                    print('no,', len(x_up_right), len(x_down_left))
                     break
                 if x_up_right.size > 50:    
                     m_up,b_up = np.polyfit(x_up_right,y_up_right,1)
@@ -93,24 +96,25 @@ while cap.isOpened():
                     y_azul_contra_down = m_diag_azul * x_azul_contra_down + b_diag_azul
                     if not((0 < x_azul_contra_up < 640) and (0 < y_azul_contra_up < 480)) and not((0 < x_azul_contra_down < 640) and (0 < y_azul_contra_down < 480)):
                         diagonalNoCruza = True
+                        print('segunda ok')
                 except:
                     diagonalNoCruza = False
 
                 if suficientesPuntos and diagonalNoCruza:  
                     print('lala')
-                    frameOriginal[:,:,0] =  lower_left_triangle*225 + upper_right_triangle*225 + np.tril(np.ones((480,640),int), -1)*30 + np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(np.ones((480,640),int))), 0)))*30
-                    frameOriginal[:,:,1] =  lower_left_triangle*255 + upper_right_triangle*255
-                    frameOriginal[:,:,2] =  lower_left_triangle*255 + upper_right_triangle*255
-                    cv2.line(frameOriginal,(0,0),(640,480),(255,0,0), 2)
-                    cv2.line(frameOriginal,(0,int(b_up)),(640,int(m_up*640+b_up)),(0,255,0), 2)
-                    cv2.line(frameOriginal,(0,int(b_down)),(int((480-b_down)/m_down),480),(0,255,0), 2)
+                    frameOriginal[:,:,0] =  lower_left_triangle*255 + upper_right_triangle*255
+                    frameOriginal[:,:,1] =  lower_left_triangle*55 + upper_right_triangle*55 + np.tril(np.ones((480,640),int), -1)*200 + np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(np.ones((480,640),int))), 0)))*200
+                    frameOriginal[:,:,2] =  lower_left_triangle*55 + upper_right_triangle*55 + np.tril(np.ones((480,640),int), -1)*200 + np.fliplr(np.flipud(np.tril(np.flipud(np.fliplr(np.ones((480,640),int))), 0)))*200
+                    cv2.line(frameOriginal,(0,0),(640,480),(0,255,255), 2)
+                    cv2.line(frameOriginal,(0,int(b_up)),(640,int(m_up*640+b_up)),(0,0,255), 2)
+                    cv2.line(frameOriginal,(0,int(b_down)),(int((480-b_down)/m_down),480),(0,0,255), 2)
 
 
         # cv2.imshow('lower_right', lower_right_triangle)
         cv2.imshow('imagen original', frameOriginal)
         # out.write(frameDiagonal)
         # cv2.imshow('eleccion de diagonal', frameDiagonal)
-        key = cv2.waitKey(1000)
+        key = cv2.waitKey(100)
         if key == ord('q') or key == ord('Q'):
             break
         if key == ord('s') or key == ord('S'):
