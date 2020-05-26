@@ -172,7 +172,9 @@ def procesoPrincipal(enviar1):
                         Thread(target=self._hiloDetectarRojoEnDeposito, args=()).start()
                         self.listoParaReiniciar = True
                         # self.buscandoRojoEnDeposito = True
-
+                    elif qr_encontrado[0] == 'F' and self.listoParaReiniciar:
+                        self.buscandoParadaEnDeposito = True
+                        Thread(target=self._hiloDetectarFalsoRojo, args=()).start()
                 elif len(qr_encontrado) == 1:
                     if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
                         print("inicio hallado")
@@ -357,6 +359,33 @@ def procesoPrincipal(enviar1):
                 self.esperarHastaObjetoDetectado = False
                 time.sleep(5)
                 self.buscandoParadaEnDeposito = False
+
+        def _hiloDetectarFalsoRojo(self):
+            estoyDetectandoRojo = False
+            tiempoDesdeUltimoRojoDetectado = -1
+
+            while True:
+                frame = copy.deepcopy(self.frameCompleto)
+
+                lower_red = np.array([0, 10, 40])
+                upper_red = np.array([10, 100, 100])
+                #Aplico filtro de color con los parametros ya definidos
+                hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+                mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
+
+                y, x = np.where(mask_red == 255)
+                if len(x) < 200:
+                    if estoyDetectandoRojo:
+                        tiempoDesdeUltimoRojoDetectado = time.time()
+                        estoyDetectandoRojo = False
+                elif len(x) >= 200:
+                    tiempoDesdeUltimoRojoDetectado = -1
+                    estoyDetectandoRojo = True
+
+                if (time.time() - tiempoDesdeUltimoRojoDetectado) > 3 and tiempoDesdeUltimoRojoDetectado != -1:
+                    break
+
+            self.buscandoParadaEnDeposito = False
 
         def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
             if calcularFPS:
@@ -742,10 +771,10 @@ def procesoPrincipal(enviar1):
         
         def _tomarDesicionBasadaDeteccionObjetos(self, frameCompleto):
             # Comenzamos buscando objetos si se detecta la senda peatonal roja
-            if not self.cartelDetectado:
+            if not self.cartelDetectado and not self.listoParaReiniciar:
                 if self._detectarRojo(frameCompleto): #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
                     #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
-                    print('##################### rojo detectado')
+                    # print('##################### rojo detectado')
                     enviar1.send('stopPrioritario')
                     self.esperarHastaObjetoDetectado = True
                     # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
@@ -820,10 +849,11 @@ def procesoPrincipal(enviar1):
                                         print('##################### cartel cero detectado')
 
                         else:
-                            self.contandoFramesEstandoTorcido += 1
-                            if self.contandoFramesEstandoTorcido == 2:
-                                    self.contandoFramesEstandoTorcido = 0
-                                    enviar1.send('giroEnElLugarDer')
+                            if self.paseElSemaforo:
+                                self.contandoFramesEstandoTorcido += 1
+                                if self.contandoFramesEstandoTorcido == 2:
+                                        self.contandoFramesEstandoTorcido = 0
+                                        enviar1.send('giroEnElLugarDer')
 
             else:
                 self.contandoFramesEstandoTorcido = 0
