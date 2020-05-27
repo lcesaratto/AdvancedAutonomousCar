@@ -7,13 +7,15 @@ from pyzbar import pyzbar
 import copy
 from controlPWM import procesoAuxiliar
 from multiprocessing import Process, Pipe
-from threading import Thread
+from threading import Thread, Event
 
 
 def procesoPrincipal(enviar1):
 
     class VehiculoAutonomo (object):
         def __init__(self):
+            self.e = Event()
+            # self.contandoFramesNico = 0
             # self.contandoFramesGonzalo = 0
             self.frameCompleto = []
             self.girandoHaciaDerecha = False
@@ -102,6 +104,10 @@ def procesoPrincipal(enviar1):
             self.m_corr, self.b_corr = self._cargarFactoresAlineacion()
 
             self.tiempoInicialLuegoDeDeteccionCartel = 0
+
+            self.noLanceHiloParaFalsoRojo = True
+
+            # self.NuevoFrameParaProcesar = False
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -169,17 +175,19 @@ def procesoPrincipal(enviar1):
                         print('Dejando paquete!!')
                         self.depositoHallado = 'null'
                         self.buscandoParadaEnDeposito = True
-                        Thread(target=self._hiloDetectarRojoEnDeposito, args=()).start()
+                        Thread(target=self._hiloDetectarRojoEnDeposito, args=(self.e,)).start()
                         self.listoParaReiniciar = True
                         # self.buscandoRojoEnDeposito = True
-                    elif qr_encontrado[0] == 'F' and self.listoParaReiniciar:
+                    elif qr_encontrado[0] == 'F' and self.listoParaReiniciar and qr_encontrado[1] != self.depositoABuscar and self.noLanceHiloParaFalsoRojo:
+                        print('detecto falso qr')
+                        self.noLanceHiloParaFalsoRojo = False
                         self.buscandoParadaEnDeposito = True
-                        Thread(target=self._hiloDetectarFalsoRojo, args=()).start()
+                        Thread(target=self._hiloDetectarFalsoRojo, args=(self.e,)).start()
                 elif len(qr_encontrado) == 1:
                     if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
                         print("inicio hallado")
                         self.buscandoParadaEnInicio = True
-                        Thread(target=self._hiloDetectarRojoEnInicio, args=()).start()
+                        Thread(target=self._hiloDetectarRojoEnInicio, args=(self.e,)).start()
                         self.listoParaReiniciar = False
 
         def _detectarRojo(self,frame):  
@@ -203,7 +211,7 @@ def procesoPrincipal(enviar1):
             else:
                 return False
 
-        def _hiloDetectarRojoEnInicio(self):
+        def _hiloDetectarRojoEnInicio(self, event):
 
             def alinear():
                 ultimo_m_recibido = 0
@@ -249,6 +257,7 @@ def procesoPrincipal(enviar1):
 
             while True:
                 if not self.buscandoParadaEnDeposito:
+                    event.wait()
                     frame = copy.deepcopy(self.frameCompleto)
 
                     lower_red = np.array([0, 10, 40])
@@ -259,13 +268,16 @@ def procesoPrincipal(enviar1):
 
                     y, x = np.where(mask_red == 255)
                     if len(x) == 0:
+                        event.clear()
                         continue
                     mediana_y = int(statistics.median_low(y))
 
                     if (200 < mediana_y) and (len(x)>100):
                         self.esperarHastaObjetoDetectado = True
                         enviar1.send('stopPrioritario')
+                        event.clear()
                         break
+                event.clear()
 
             time.sleep(1)
             if (200 < mediana_y < 300):
@@ -292,9 +304,11 @@ def procesoPrincipal(enviar1):
             self.buscandoParadaEnInicio = False
             self.paseElSemaforo = False
 
-        def _hiloDetectarRojoEnDeposito(self):
+        def _hiloDetectarRojoEnDeposito(self, event):
             if self.buscandoParadaEnDeposito:
                 while True:
+                    event.wait()
+                    # self.lock.adquire()
                     frame = copy.deepcopy(self.frameCompleto)
 
                     lower_red = np.array([0, 10, 40])
@@ -305,6 +319,7 @@ def procesoPrincipal(enviar1):
 
                     y, x = np.where(mask_red == 255)
                     if len(x) == 0:
+                        event.clear()
                         continue
                     mediana_y = int(statistics.median_low(y))
 
@@ -312,7 +327,9 @@ def procesoPrincipal(enviar1):
                         # return True
                         self.esperarHastaObjetoDetectado = True
                         enviar1.send('stopPrioritario')
+                        event.clear()
                         break
+                    event.clear()
 
                 time.sleep(1)
                 # endereza
@@ -360,11 +377,12 @@ def procesoPrincipal(enviar1):
                 time.sleep(5)
                 self.buscandoParadaEnDeposito = False
 
-        def _hiloDetectarFalsoRojo(self):
+        def _hiloDetectarFalsoRojo(self, event):
             estoyDetectandoRojo = False
             tiempoDesdeUltimoRojoDetectado = -1
 
             while True:
+                event.wait()
                 frame = copy.deepcopy(self.frameCompleto)
 
                 lower_red = np.array([0, 10, 40])
@@ -383,8 +401,11 @@ def procesoPrincipal(enviar1):
                     estoyDetectandoRojo = True
 
                 if (time.time() - tiempoDesdeUltimoRojoDetectado) > 3 and tiempoDesdeUltimoRojoDetectado != -1:
+                    event.clear()
                     break
+                event.clear()
 
+            self.noLanceHiloParaFalsoRojo = True
             self.buscandoParadaEnDeposito = False
 
         def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
@@ -541,7 +562,7 @@ def procesoPrincipal(enviar1):
                     self.contandoFramesCruzando += 1
                 if self.contandoFramesCruzando >= 5:
                     self.siguiendoLineaSuperior = False
-                    # print('//////////////////////////////////////// LIMPIANDO FLAG')
+                    print('//////////////////////////////////////// LIMPIANDO FLAG')
                     distancia_al_centro = distancia_al_centro_inferior
                 else:
                     frame = copy.deepcopy(self.frameCompleto[0:160,0:int(self.width)])
@@ -562,7 +583,7 @@ def procesoPrincipal(enviar1):
                     ubicacion_punto_verde_superior = x_mid_int
                     distancia_al_centro = (self.width/2) - ubicacion_punto_verde_superior
 
-
+            # print('///////////////////////////// ', distancia_al_centro)
             if abs(distancia_al_centro) == 320:
                 if self.contandoFramesParado != 3:
                     enviar1.send('stop')
@@ -588,9 +609,11 @@ def procesoPrincipal(enviar1):
                     enviar1.send('giroSuaIzq')
                 elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
                     enviar1.send('giroSuaDer')
-                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
+                #elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
+                elif -320 < distancia_al_centro <= -limite2:
                         enviar1.send('giroBruDer')
-                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
+                #elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
+                elif 320 > distancia_al_centro >= limite2:
                         enviar1.send('giroBruIzq')
                 else:
                     enviar1.send('forward')
@@ -881,6 +904,8 @@ def procesoPrincipal(enviar1):
             while self.cap.isOpened():
                 ret, frameCompleto = self.cap.read()
                 if ret:
+                    self.e.set()
+                    # self.NuevoFrameParaProcesar = True
                     # self.contandoFramesGonzalo += 1
                     self.frameCompleto = frameCompleto
 
@@ -908,7 +933,12 @@ def procesoPrincipal(enviar1):
                         # Display the resulting frame
                         # cv2.putText(self.frameCompleto, str(self.contandoFramesGonzalo), (500,400), self.font, 2, (0,0,255), 3)
                         cv2.imshow('frameCompleto', self.frameCompleto[0][0])
+                        # self.contandoFramesNico += 1
+                        # cv2.imwrite('nico/Completo_'+str(self.contandoFramesNico)+'.jpg', self.frameCompleto)
+                        # cv2.imwrite('nico/Mascara_'+str(self.contandoFramesNico)+'.jpg', self.mask_green)
+                        # cv2.imshow('frameVerde', self.mask_green[0][0])
                         # out.write(self.frameCompleto)
+                        # out1.write(self.mask_green)
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
                         if key == ord('q') or key == ord('Q'):
@@ -923,6 +953,7 @@ def procesoPrincipal(enviar1):
             # When everything done, release the video capture object
             self.cap.release()
             # out.release()
+            # out1.release()
             # Closes all the frames
             cv2.destroyAllWindows()
             exit()
@@ -932,7 +963,8 @@ def procesoPrincipal(enviar1):
 
 
 if __name__ == "__main__":
-    # out = cv2.VideoWriter('mostrandoDeteccionObjetos3.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
+    # out = cv2.VideoWriter('mostrandoNico1.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
+    # out1 = cv2.VideoWriter('mostrandoNico2.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,160))
 
     enviar1, recibir1 = Pipe()
     
