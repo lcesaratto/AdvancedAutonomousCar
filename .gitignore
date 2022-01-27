@@ -2,3 +2,5 @@ Otros\ proyectos\ de\ referencia/
 venv/
 .vscode/
 .gitignore
+__pycache__
+.pylintrc

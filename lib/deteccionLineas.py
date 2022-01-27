@@ -1,22 +1,21 @@
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 import statistics
 import time
 from pyzbar import pyzbar
 import copy
-from controlPWM import procesoAuxiliar
-from multiprocessing import Process, Pipe
-from threading import Thread
+
+from threading import Thread, Event
 
 
 def procesoPrincipal(enviar1):
 
     class VehiculoAutonomo (object):
         def __init__(self):
-            self.estoyDetectandoObjetos = False
-            self.mandeOrdenParaAvanzar = False
-            self.contandoFramesGonzalo = 0
+            self.e = Event()
+            # self.estoyDetectandoObjetos = False
+            # self.contandoFramesNico = 0
+            # self.contandoFramesGonzalo = 0
             self.frameCompleto = []
             self.girandoHaciaDerecha = False
 
@@ -104,6 +103,10 @@ def procesoPrincipal(enviar1):
             self.m_corr, self.b_corr = self._cargarFactoresAlineacion()
 
             self.tiempoInicialLuegoDeDeteccionCartel = 0
+
+            self.noLanceHiloParaFalsoRojo = True
+
+            # self.NuevoFrameParaProcesar = False
             
         def _abrirCamara (self):
             # Create a VideoCapture object and read from input file
@@ -119,11 +122,12 @@ def procesoPrincipal(enviar1):
             return fps, width, height
 
         def _cargarModelo(self):
-            return cv2.dnn.readNet("4class_yolov3-tiny_final.weights", "4class_yolov3-tiny.cfg")
+            return cv2.dnn.readNet("model weights and cfg files/4class_yolov3-tiny_final.weights", 
+                                    "model weights and cfg files/4class_yolov3-tiny.cfg")
         
         def _cargarClases(self):
             classes = []
-            with open("4classes.names", "r") as f:
+            with open("model weights and cfg files/4classes.names", "r") as f:
                 classes = [line.strip() for line in f.readlines()]
             return classes
 
@@ -171,15 +175,19 @@ def procesoPrincipal(enviar1):
                         print('Dejando paquete!!')
                         self.depositoHallado = 'null'
                         self.buscandoParadaEnDeposito = True
-                        Thread(target=self._hiloDetectarRojoEnDeposito, args=()).start()
+                        Thread(target=self._hiloDetectarRojoEnDeposito, args=(self.e,)).start()
                         self.listoParaReiniciar = True
                         # self.buscandoRojoEnDeposito = True
-
+                    elif qr_encontrado[0] == 'F' and self.listoParaReiniciar and qr_encontrado[1] != self.depositoABuscar and self.noLanceHiloParaFalsoRojo:
+                        print('detecto falso qr')
+                        self.noLanceHiloParaFalsoRojo = False
+                        self.buscandoParadaEnDeposito = True
+                        Thread(target=self._hiloDetectarFalsoRojo, args=(self.e,)).start()
                 elif len(qr_encontrado) == 1:
                     if qr_encontrado[0] == 'P' and self.listoParaReiniciar == True:
                         print("inicio hallado")
                         self.buscandoParadaEnInicio = True
-                        Thread(target=self._hiloDetectarRojoEnInicio, args=()).start()
+                        Thread(target=self._hiloDetectarRojoEnInicio, args=(self.e,)).start()
                         self.listoParaReiniciar = False
 
         def _detectarRojo(self,frame):  
@@ -203,7 +211,7 @@ def procesoPrincipal(enviar1):
             else:
                 return False
 
-        def _hiloDetectarRojoEnInicio(self):
+        def _hiloDetectarRojoEnInicio(self, event):
 
             def alinear():
                 ultimo_m_recibido = 0
@@ -249,6 +257,7 @@ def procesoPrincipal(enviar1):
 
             while True:
                 if not self.buscandoParadaEnDeposito:
+                    event.wait()
                     frame = copy.deepcopy(self.frameCompleto)
 
                     lower_red = np.array([0, 10, 40])
@@ -259,13 +268,16 @@ def procesoPrincipal(enviar1):
 
                     y, x = np.where(mask_red == 255)
                     if len(x) == 0:
+                        event.clear()
                         continue
                     mediana_y = int(statistics.median_low(y))
 
                     if (200 < mediana_y) and (len(x)>100):
                         self.esperarHastaObjetoDetectado = True
                         enviar1.send('stopPrioritario')
+                        event.clear()
                         break
+                event.clear()
 
             time.sleep(1)
             if (200 < mediana_y < 300):
@@ -292,12 +304,11 @@ def procesoPrincipal(enviar1):
             self.buscandoParadaEnInicio = False
             self.paseElSemaforo = False
 
-        def _hiloDetectarRojoEnDeposito(self):
-            
-
-            
+        def _hiloDetectarRojoEnDeposito(self, event):
             if self.buscandoParadaEnDeposito:
                 while True:
+                    event.wait()
+                    # self.lock.adquire()
                     frame = copy.deepcopy(self.frameCompleto)
 
                     lower_red = np.array([0, 10, 40])
@@ -308,6 +319,7 @@ def procesoPrincipal(enviar1):
 
                     y, x = np.where(mask_red == 255)
                     if len(x) == 0:
+                        event.clear()
                         continue
                     mediana_y = int(statistics.median_low(y))
 
@@ -315,55 +327,11 @@ def procesoPrincipal(enviar1):
                         # return True
                         self.esperarHastaObjetoDetectado = True
                         enviar1.send('stopPrioritario')
+                        event.clear()
                         break
+                    event.clear()
 
                 time.sleep(1)
-
-                # #Avanzar
-                # try:
-                #     frame = copy.deepcopy(self.frameCompleto)
-                #     lower_red = np.array([0, 10, 40])
-                #     upper_red = np.array([10, 100, 100])
-                #     #Aplico filtro de color con los parametros ya definidos
-                #     hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
-                #     mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
-                #     y, x = np.where(mask_red == 255)
-                #     mediana_y = int(statistics.median_low(y)+100)
-                #     segundos = round(-0.00286 * mediana_y + 1.84, 1)
-                # except:
-                #     print('PERDIO LA LINEA ROJA EN DEPOSITO')
-                #     segundos = 0.2
-                # tiempo_inicial = time.time()
-                # while (time.time()-tiempo_inicial) < segundos:
-                #     self._moverVehiculoEnLineaVerde()
-
-                # # endereza
-                # ultimo_m_recibido = 0
-                # while True:
-                #     [m, b] = self.arrayParametrosX
-                #     if m == ultimo_m_recibido:
-                #         continue
-                #     else:
-                #         ultimo_m_recibido = m
-                #     if m != 100:
-                #         x_ab = m*480+b
-                #         m_tabla = x_ab*self.m_corr+self.b_corr
-                #         if ( (m_tabla-0.1) < m < (m_tabla+0.1) ):
-                #             print('OK')
-                #             break
-                #         else:
-                #             if m < m_tabla:
-                #                 print("GIRAR A LA DERECHA")
-                #                 enviar1.send('giroEnElLugarDer')
-                #                 time.sleep(0.5)
-                #             else:
-                #                 print("GIRAR A LA IZQUIERDA")
-                #                 enviar1.send('giroEnElLugarIzq')
-                #                 time.sleep(0.5)
-
-                # time.sleep(1)
-
-
                 # endereza
                 ultimo_m_recibido = 0
                 while True:
@@ -409,7 +377,38 @@ def procesoPrincipal(enviar1):
                 time.sleep(5)
                 self.buscandoParadaEnDeposito = False
 
-        def _buscarObjetos (self, frame, mostrarResultado=True, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
+        def _hiloDetectarFalsoRojo(self, event):
+            estoyDetectandoRojo = False
+            tiempoDesdeUltimoRojoDetectado = -1
+
+            while True:
+                event.wait()
+                frame = copy.deepcopy(self.frameCompleto)
+
+                lower_red = np.array([0, 10, 40])
+                upper_red = np.array([10, 100, 100])
+                #Aplico filtro de color con los parametros ya definidos
+                hsv_red = cv2.cvtColor(frame, cv2.COLOR_BGR2HLS)
+                mask_red = cv2.inRange(hsv_red, lower_red, upper_red)
+
+                y, x = np.where(mask_red == 255)
+                if len(x) < 200:
+                    if estoyDetectandoRojo:
+                        tiempoDesdeUltimoRojoDetectado = time.time()
+                        estoyDetectandoRojo = False
+                elif len(x) >= 200:
+                    tiempoDesdeUltimoRojoDetectado = -1
+                    estoyDetectandoRojo = True
+
+                if (time.time() - tiempoDesdeUltimoRojoDetectado) > 3 and tiempoDesdeUltimoRojoDetectado != -1:
+                    event.clear()
+                    break
+                event.clear()
+
+            self.noLanceHiloParaFalsoRojo = True
+            self.buscandoParadaEnDeposito = False
+
+        def _buscarObjetos (self, frame, mostrarResultado=False, retornarBoxes=False, retornarConfidence=False, calcularFPS=False):
             if calcularFPS:
                 tiempo_inicial = time.time()
             
@@ -521,15 +520,15 @@ def procesoPrincipal(enviar1):
             self.ubicacion_punto_verde = x_mid_int
             # print(self.ubicacion_punto_verde)
             distancia_al_centro = (self.width/2) - self.ubicacion_punto_verde
-            if x.size > 50 and distancia_al_centro < 320:
-                y += 320
-                y_indice = np.where(y>400)
-                x_nuevo = x[y_indice]
-                y_nuevo = y[y_indice]
+            y += 320
+            y_indice = np.where(y>400)
+            x_nuevo = x[y_indice]
+            y_nuevo = y[y_indice]
+            if x_nuevo.size > 50 and distancia_al_centro < 320:
                 m,b = np.polyfit(y_nuevo,x_nuevo,1)
                 m2 = 1/m
                 b2 = -b/m
-                cv2.line(self.frameCompleto, (int((320-b2)/m2),320), (int((480-b2)/m2),480),(255,0,0), 3)
+                #cv2.line(self.frameCompleto, (int((320-b2)/m2),320), (int((480-b2)/m2),480),(255,0,0), 3)
 
                 self.arrayParametrosX = [m,b]
             else:
@@ -563,7 +562,7 @@ def procesoPrincipal(enviar1):
                     self.contandoFramesCruzando += 1
                 if self.contandoFramesCruzando >= 5:
                     self.siguiendoLineaSuperior = False
-                    # print('//////////////////////////////////////// LIMPIANDO FLAG')
+                    print('//////////////////////////////////////// LIMPIANDO FLAG')
                     distancia_al_centro = distancia_al_centro_inferior
                 else:
                     frame = copy.deepcopy(self.frameCompleto[0:160,0:int(self.width)])
@@ -584,7 +583,7 @@ def procesoPrincipal(enviar1):
                     ubicacion_punto_verde_superior = x_mid_int
                     distancia_al_centro = (self.width/2) - ubicacion_punto_verde_superior
 
-
+            # print('///////////////////////////// ', distancia_al_centro)
             if abs(distancia_al_centro) == 320:
                 if self.contandoFramesParado != 3:
                     enviar1.send('stop')
@@ -610,9 +609,11 @@ def procesoPrincipal(enviar1):
                     enviar1.send('giroSuaIzq')
                 elif distancia_al_centro < -limite1 and abs(distancia_al_centro) < limite2:
                     enviar1.send('giroSuaDer')
-                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
+                #elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia <= 0:
+                elif -320 < distancia_al_centro <= -limite2:
                         enviar1.send('giroBruDer')
-                elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
+                #elif 320 > abs(distancia_al_centro) >= limite2 and self.ultima_distancia > 0:
+                elif 320 > distancia_al_centro >= limite2:
                         enviar1.send('giroBruIzq')
                 else:
                     enviar1.send('forward')
@@ -793,17 +794,17 @@ def procesoPrincipal(enviar1):
         
         def _tomarDesicionBasadaDeteccionObjetos(self, frameCompleto):
             # Comenzamos buscando objetos si se detecta la senda peatonal roja
-            self.mandeOrdenParaAvanzar = False
-            if not self.cartelDetectado:
+            if not self.cartelDetectado and not self.listoParaReiniciar:
                 if self._detectarRojo(frameCompleto): #ToDO: Falta hacer que solo busque cuando ve la senda por primera vez
                     #cuando deja de ver rojo deja de buscar carteles, hay que hacer una bandera 
-                    print('##################### rojo detectado')
+                    # print('##################### rojo detectado')
                     enviar1.send('stopPrioritario')
-                    # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
                     self.esperarHastaObjetoDetectado = True
+                    # para dejarla levantada y mientras este levantada va a buscar carteles. una vez que encuentra un cartel se limpia
+                    
                     # if self.estoyDistanciaCorrecta:
                     self.contandoFramesDeteccionObjetos += 1
-                    self.estoyDetectandoObjetos = True
+                    # self.estoyDetectandoObjetos = True
                     if self.contandoFramesDeteccionObjetos == 5:
                         self.contandoFramesDeteccionObjetos = 0
                         class_ids = self._buscarObjetos(frameCompleto)
@@ -816,13 +817,11 @@ def procesoPrincipal(enviar1):
                                     if self.contandoFramesEstandoTorcido == 2:
                                         self.contandoFramesEstandoTorcido = 0
                                         enviar1.send('giroEnElLugarDer')
-                                        self.mandeOrdenParaAvanzar = True
                                 elif ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 1):
                                     self.contandoFramesEstandoTorcido += 1
                                     if self.contandoFramesEstandoTorcido == 2:
                                         self.contandoFramesEstandoTorcido = 0
                                         enviar1.send('giroEnElLugarIzq')
-                                        self.mandeOrdenParaAvanzar = True
                                 elif ((0 in class_ids) or (1 in class_ids)) and ((2 in class_ids) or (3 in class_ids)) and (len(class_ids) == 2):
                                     if (2 in class_ids):
                                         self.contandoFramesEstandoTorcido = 0
@@ -836,7 +835,6 @@ def procesoPrincipal(enviar1):
                                             self.esperarHastaObjetoDetectado = False
                                             self.paseElSemaforo = True
                                             print('##################### cartel uno detectado y semaforo verde')
-                                            self.mandeOrdenParaAvanzar = True
                                     elif (3 in class_ids):
                                         self.contandoFramesEstandoTorcido = 0
                                         self.tiempoInicialLuegoDeDeteccionCartel = time.time()
@@ -849,7 +847,6 @@ def procesoPrincipal(enviar1):
                                             self.esperarHastaObjetoDetectado = False
                                             self.paseElSemaforo = True
                                             print('##################### cartel cero detectado y semaforo verde')
-                                            self.mandeOrdenParaAvanzar = True
                             
                             else:
                                 if (2 in class_ids) and (len(class_ids) == 1):
@@ -863,7 +860,6 @@ def procesoPrincipal(enviar1):
                                         self.depositoHallado = str(2)
                                         self.esperarHastaObjetoDetectado = False
                                         print('##################### cartel uno detectado')
-                                        self.mandeOrdenParaAvanzar = True
                                 elif (3 in class_ids) and (len(class_ids) == 1):
                                     self.contandoFramesEstandoTorcido = 0
                                     self.tiempoInicialLuegoDeDeteccionCartel = time.time()
@@ -875,17 +871,16 @@ def procesoPrincipal(enviar1):
                                         self.depositoHallado = str(1)
                                         self.esperarHastaObjetoDetectado = False
                                         print('##################### cartel cero detectado')
-                                        self.mandeOrdenParaAvanzar = True
 
                         else:
-                            self.contandoFramesEstandoTorcido += 1
-                            if self.contandoFramesEstandoTorcido == 2:
-                                    self.contandoFramesEstandoTorcido = 0
-                                    enviar1.send('giroEnElLugarDer')
-                                    self.mandeOrdenParaAvanzar = True
+                            if self.paseElSemaforo:
+                                self.contandoFramesEstandoTorcido += 1
+                                if self.contandoFramesEstandoTorcido == 2:
+                                        self.contandoFramesEstandoTorcido = 0
+                                        enviar1.send('giroEnElLugarDer')
 
             else:
-                self.estoyDetectandoObjetos = False
+                # self.estoyDetectandoObjetos = False
                 self.contandoFramesEstandoTorcido = 0
                 if not self._detectarRojo(frameCompleto):
                     # Espero 3segundos para borrar la bandera de cartel detectado
@@ -911,7 +906,9 @@ def procesoPrincipal(enviar1):
             while self.cap.isOpened():
                 ret, frameCompleto = self.cap.read()
                 if ret:
-                    self.contandoFramesGonzalo += 1
+                    self.e.set()
+                    # self.NuevoFrameParaProcesar = True
+                    # self.contandoFramesGonzalo += 1
                     self.frameCompleto = frameCompleto
 
                     # Aca corremos la funcion que busca un codigo qr en la imagen para comenzar
@@ -935,18 +932,26 @@ def procesoPrincipal(enviar1):
                         # En base a los resultados de self._detectarBocacalle() decido si seguir la linea verde o cruzar la bocacalle
                         self._tomarDecisionMovimiento()
                         Thread(target=self._buscarDeposito, args=()).start()
+
                         # Display the resulting frame
-                        if self.estoyDetectandoObjetos:
-                            cv2.putText(self.frameCompleto, 'ROJO', (100,400), self.font, 2, (0,0,255), 3)
-                        else:
-                            cv2.putText(self.frameCompleto, 'NADA', (100,400), self.font, 2, (0,0,255), 3)
-                        if self.mandeOrdenParaAvanzar:
-                            cv2.putText(self.frameCompleto, 'SI', (200,400), self.font, 2, (0,0,255), 3)
-                        else:
-                            cv2.putText(self.frameCompleto, 'NO', (200,400), self.font, 2, (0,0,255), 3)
-                        cv2.putText(self.frameCompleto, str(self.contandoFramesGonzalo), (500,400), self.font, 2, (0,0,255), 3)
-                        cv2.imshow('frameCompleto', self.frameCompleto)
-                        out.write(self.frameCompleto)
+                        # if self.estoyDetectandoObjetos:
+                        #     cv2.putText(self.frameCompleto, 'ROJO', (100,400), self.font, 2, (0,0,255), 3)
+                        # else:
+                        #     cv2.putText(self.frameCompleto, 'NADA', (100,400), self.font, 2, (0,0,255), 3)
+
+                        # cv2.putText(self.frameCompleto, str(self.contandoFramesGonzalo), (500,400), self.font, 2, (0,0,255), 3)
+
+                        cv2.imshow('frameCompleto', self.frameCompleto[0][0])
+
+                        # self.contandoFramesNico += 1
+                        # cv2.imwrite('nico/Completo_'+str(self.contandoFramesNico)+'.jpg', self.frameCompleto)
+                        # cv2.imwrite('nico/Mascara_'+str(self.contandoFramesNico)+'.jpg', self.mask_green)
+                        # cv2.imshow('frameVerde', self.mask_green[0][0])
+                        
+                        # out.write(self.frameCompleto)
+                        # out1.write(self.mask_green)
+
+
                         # Press Q on keyboard to  exit
                         key = cv2.waitKey(10)
                         if key == ord('q') or key == ord('Q'):
@@ -960,22 +965,15 @@ def procesoPrincipal(enviar1):
 
             # When everything done, release the video capture object
             self.cap.release()
-            out.release()
+            # out.release()
+            # out1.release()
             # Closes all the frames
             cv2.destroyAllWindows()
             exit()
 
+
+    # out = cv2.VideoWriter('mostrandoNico1.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
+    # out1 = cv2.VideoWriter('mostrandoNico2.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,160))
+
     vehiculoAutonomo = VehiculoAutonomo()
     vehiculoAutonomo.comenzar()
-
-
-if __name__ == "__main__":
-    out = cv2.VideoWriter('mostrandoDeteccionObjetos05.avi',cv2.VideoWriter_fourcc('M','J','P','G'), 10, (640,480))
-
-    enviar1, recibir1 = Pipe()
-    
-    P_principal = Process(target=procesoPrincipal, args=(enviar1,))
-    P_auxiliar = Process(target=procesoAuxiliar, args=(recibir1,))
-    
-    P_principal.start()
-    P_auxiliar.start()

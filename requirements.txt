@@ -1,0 +1,6 @@
+opencv-python
+numpy
+pyzbar
+Adafruit_PCA9685
+wiringpi
+keyboard
