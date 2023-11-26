@@ -6,10 +6,10 @@
 
 ```bash
 # download the repository to your local machine
-git clone git@github.com:lcesaratto/AdvancedAutonomousCar.git
+git clone git@github.com:lcesaratto/self-driven-autonomous-vehicle.git
 
 # move into repository
-cd AdvancedAutonomousCar
+cd self-driven-autonomous-vehicle
 
 # main file
 main.py
